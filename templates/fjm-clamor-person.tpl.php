@@ -7,9 +7,9 @@ drupal_set_title(t('Composers'));
 <div class="islandora_fjm_person">
   <div class='leftcolumn'>
   <?php
-  echo theme('islandora_fjm_atm_imagegallery', $pid);
+  echo theme('fjm_clamor_imagegallery', $pid);
   ?><div class='performance_table'>
-  <h3><?php echo t("Performances in CLAMOR") ?></h3><?
+  <h3><?php echo t("Performances in CLAMOR"); ?></h3><?php
   echo theme('table', $performance_headers, $performances['associated']);
   ?></div>
   </div>

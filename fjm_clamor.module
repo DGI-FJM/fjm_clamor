@@ -144,7 +144,6 @@ function template_preprocess_fjm_clamor_flowplayer(&$vars) {
 }
 
 function template_preprocess_fjm_clamor_solr_result(&$vars) {
-    module_load_include('inc', 'islandora_fjm', 'includes/callbacks');
     $result = $vars['item'];
 
     $toReturn = array();
@@ -368,21 +367,22 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
           'name'=> $doc->atm_performance_composer_name_s
         ),
         'localpdf' => ($doc->atm_performance_score_pdf_b === TRUE),
-        'localpdfscore' => islandora_fjm_get_pid_from_array(FJM::makeArray($doc->rels_basedOn_ms)),
+        'localpdfscore' => islandora_fjm_get_pid_from_array((array)$doc->rels_basedOn_ms),
         'score_titn' => $doc->atm_performance_score_titn_s,
         'order' => $doc->rels_concertOrder_ms,
         'mp3stat' => ($doc->atm_performance_mp3_b === TRUE),
         'movements' => islandora_fjm_zip(
-          'pid', FJM::makeArray($doc->atm_performance_movement_ms),
-          'name', FJM::makeArray($doc->atm_performance_movement_name_ms),
-          'hasMP3', FJM::makeArray($doc->atm_performance_movement_mp3_ms)
+          'pid', (array)$doc->atm_performance_movement_ms,
+          'name', (array)$doc->atm_performance_movement_name_ms,
+          'hasMP3', (array)$doc->atm_performance_movement_mp3_ms
         )
     );
     
-    $players = FJM::makeArray($doc->atm_performance_player_ms);
-    $instrument = FJM::makeArray($doc->atm_performance_inst_ms);
-    for ($i = 0; $i < count($players); $i++) {
-      $performance['players'][$players[$i]][] = $instrument[$i];
+    $players = (array)$doc->atm_performance_player_ms;
+    $instrument = (array)$doc->atm_performance_inst_ms;
+    //FIXME:  There might/could be trouble here if a person plays more than one instrument.
+    foreach ($players as $idx => $player) {
+      $performance['players'][$player][] = $instrument[$idx];
     }
     
     $performance['rows'] = array(
@@ -622,152 +622,124 @@ function template_preprocess_fjm_clamor_program(&$vars) {
 }
 
 function template_preprocess_fjm_clamor_person(&$vars) {
-    $pid = $vars['pid'];
-    FJM::userAgentHack();
-    $eacdoc = new DOMDocument();
-    
-    if (!$eacdoc->loadXML(do_curl('http://' . $_SERVER['HTTP_HOST'] . url("fedora/repository/$pid/EAC-CPF")))) {
-        return;
-    }
-    $eaccpf = new DOMXPath($eacdoc);
-    
-    $vars['name'] = array(
-        'first' => $eaccpf->evaluate('string(/eac-cpf/cpfDescription/identity/nameEntry[@localType="primary"]/part[@localType="forename"])'),
-        'last' => $eaccpf->evaluate('string(/eac-cpf/cpfDescription/identity/nameEntry[@localType="primary"]/part[@localType="surname"])')
-    );
-    $vars['date']['birth'] = $eaccpf->evaluate('string(/eac-cpf/cpfDescription/description/existDates/dateRange/fromDate/@standardDate)');
-    $vars['date']['death'] = $eaccpf->evaluate('string(/eac-cpf/cpfDescription/description/existDates/dateRange/toDate/@standardDate)');
-    
-    $vars['biography'] = $eacdoc->saveXML($eaccpf->evaluate('/eac-cpf/cpfDescription/description/biogHist[@localType="primary"]')->item(0));
-    if (strpos($vars['biography'], '&lt;p&gt;')) {
-        $vars['biography'] = html_entity_decode($vars['biography']);
-    }
-    
-    $vars['performances'] = array(
-        'composed' => array(),
-        'played' => array()
-    );
-    
-    //Get a list of all performances in which this person has either composed
-    //  the piece being played, or has played in the piece.
-    $performances = array(
-        'associated' => new DOMXPath(islandora_fjm_perform_solr_q(
-                "atm_performance_composer_pid_s:\"$pid\" OR atm_performance_performer_pid_ms:\"$pid\"", 
-                array( //fields
-                    "atm_performance_piece_title_s",
-                    "atm_performance_year_s",
-                    "rels_isMemberOf_ms",
-                    "atm_performance_order_i"
-                ),
-                array( //otherParams
-                    'rows' => 1000,
-                    'sort' => 'atm_performance_piece_title_mlt asc,atm_performance_year_s desc'
-                )))
-    );
-    //Define headers (presumably for a couple of tables), as well as how to get
-    //  values for the given column out of the xpath objects created previously,
-    //  and what to name them.
-    $headers = array(
-        'associated' => array(
-            array(
-                'data' => t('Piece'),
-                'sField' => 'title',
-                'xpath' => 'str[@name="atm_performance_piece_title_s"]/text()',
-                'linkTo' => array(
-                    'pid' => array(
-                        'xpath' => 'arr[@name="rels_isMemberOf_ms"]/str[1]/text()'
-                    ),
-                    'page' => array(
-                        'xpath' => 'number(int[@name="atm_performance_order_i"]/text())'
-                    )
-                )
-            ),
-            
-            array(
-                'data' => t('Year'),
-                'sField' => 'year',
-                'xpath' => 'str[@name="atm_performance_year_s"]/text()'
-            ),
-            /* @todo:  Remove
-             * @removeme: Not needed, as per http://support.discoverygarden.ca/issues/1492
-            array(
-                'data' => t('Concert'),
-                'sField' => 'concert',
-                'xpath' => 'str[@name="atm_performance_concert_name_s"]/text()',
-                'linkTo' => array(
-                    'pid' => array(
-                        'xpath' => 'arr[@name="rels_isMemberOf_ms"]/str[1]/text()'
-                    )
-                )
-            ),
-            array(
-                'data' => t('Cycle'),
-                'sField' => 'cycle', 
-                'xpath' => 'str[@name="atm_performance_concert_cycle_s"]/text()'
-            ),
-            array(
-                'data' => t('Score'),
-                'sField' => 'score',
-                'xpath' => '"PDF"',
-                'linkTo' => array(
-                    'pid' => array(
-                        'xpath' => 'arr[@name="rels_basedOn_ms"]/str[contains(text(), ":")]/text()',
-                        'check' => 'bool[@name="atm_performance_score_pdf_b"]/text()',
-                        'failvalue' => '"N/A"'
-                    )
-                )
-            )*/
+  $pid = $vars['pid'];
+  
+  _islandora_fjm_user_agent_hack();
+  
+  $eacdoc = new DOMDocument();
+  
+  if (!$eacdoc->loadXML(do_curl('http://' . $_SERVER['HTTP_HOST'] . url("fedora/repository/$pid/EAC-CPF")))) {
+    return;
+  }
+  $eaccpf = new DOMXPath($eacdoc);
+  
+  $vars['name'] = array(
+    'first' => $eaccpf->evaluate('string(/eac-cpf/cpfDescription/identity/nameEntry[@localType="primary"]/part[@localType="forename"])'),
+    'last' => $eaccpf->evaluate('string(/eac-cpf/cpfDescription/identity/nameEntry[@localType="primary"]/part[@localType="surname"])')
+  );
+  $vars['date']['birth'] = $eaccpf->evaluate('string(/eac-cpf/cpfDescription/description/existDates/dateRange/fromDate/@standardDate)');
+  $vars['date']['death'] = $eaccpf->evaluate('string(/eac-cpf/cpfDescription/description/existDates/dateRange/toDate/@standardDate)');
+  
+  $vars['biography'] = $eacdoc->saveXML($eaccpf->evaluate('/eac-cpf/cpfDescription/description/biogHist[@localType="primary"]')->item(0));
+  if (strpos($vars['biography'], '&lt;p&gt;')) {
+    $vars['biography'] = html_entity_decode($vars['biography']);
+  }
+  
+  $vars['performances'] = array(
+    'composed' => array(),
+    'played' => array()
+  );
+  
+  //Get a list of all performances in which this person has either composed
+  //  the piece being played, or has played in the piece.
+  $performances = array(
+    'associated' => new DOMXPath(islandora_fjm_perform_solr_q(
+      "atm_performance_composer_pid_s:\"$pid\" OR atm_performance_performer_pid_ms:\"$pid\"", 
+      array( //fields
+        "atm_performance_piece_title_s",
+        "atm_performance_year_s",
+        "rels_isMemberOf_ms",
+        "atm_performance_order_i"
+      ),
+      array( //otherParams
+        'rows' => 1000,
+        'sort' => 'atm_performance_piece_title_mlt asc,atm_performance_year_s desc'
+      )))
+  );
+  //Define headers (presumably for a couple of tables), as well as how to get
+  //  values for the given column out of the xpath objects created previously,
+  //  and what to name them.
+  $headers = array(
+    'associated' => array(
+      array(
+        'data' => t('Piece'),
+        'sField' => 'title',
+        'xpath' => 'str[@name="atm_performance_piece_title_s"]/text()',
+        'linkTo' => array(
+          'pid' => array(
+            'xpath' => 'arr[@name="rels_isMemberOf_ms"]/str[1]/text()'
+          ),
+          'page' => array(
+            'xpath' => 'number(int[@name="atm_performance_order_i"]/text())'
+          )
         )
-    );
-    
-    
-    //Perform magic...  
-    //  Really, use the two arrays (of arrays) we just defined to build an array
-    //  containing the actual data to pass to the template...
-    foreach ($performances as $key => $xpath) {
-        foreach ($xpath->evaluate("/response/result[@name='response']/doc") as $doc) {
-            $temp = array();
+      ),
+      
+      array(
+        'data' => t('Year'),
+        'sField' => 'year',
+        'xpath' => 'str[@name="atm_performance_year_s"]/text()'
+      ),
+    )
+  );
+  
+  
+  //Perform magic...  
+  //  Really, use the two arrays (of arrays) we just defined to build an array
+  //  containing the actual data to pass to the template...
+  foreach ($performances as $key => $xpath) {
+    foreach ($xpath->evaluate("/response/result[@name='response']/doc") as $doc) {
+      $temp = array();
 
-            foreach ($headers[$key] as $col) {
-                $temp[$col['sField']] = $xpath->evaluate("string(" . $col['xpath'] . ")", $doc);
-                
-                //Make this column a link, based on...
-                if (isset($col['linkTo'])) {
-                    //... a pid obtained via another xpath
-                    if (isset($col['linkTo']['pid'])) {
-                        //If there is a check and it fails, continue to the next 
-                        //  column without creating the link.
-                        if (isset($col['linkTo']['pid']['check']) && !$xpath->evaluate("string(" . $col['linkTo']['pid']['check'] . ")", $doc)) {
-                            $temp[$col['sField']] = $xpath->evaluate("string(" . $col['linkTo']['pid']['failvalue'] . ")", $doc);
-                            continue;
-                        }
-                        
-                        $temp[$col['sField']] = l(
-                          $temp[$col['sField']], 
-                          "fedora/repository/".$xpath->evaluate("string(".$col['linkTo']['pid']['xpath'].")", $doc).(
-                            (isset($col['linkTo']['page']['xpath'])? '/-/-/' . $xpath->evaluate($col['linkTo']['page']['xpath'], $doc):'')
-                           ));
-                    }
-                }
-                //elseif(yadda yadda){}
+      foreach ($headers[$key] as $col) {
+        $temp[$col['sField']] = $xpath->evaluate("string(" . $col['xpath'] . ")", $doc);
+        
+        //Make this column a link, based on...
+        if (isset($col['linkTo'])) {
+          //... a pid obtained via another xpath
+          if (isset($col['linkTo']['pid'])) {
+            //If there is a check and it fails, continue to the next 
+            //  column without creating the link.
+            if (isset($col['linkTo']['pid']['check']) && !$xpath->evaluate("string(" . $col['linkTo']['pid']['check'] . ")", $doc)) {
+                $temp[$col['sField']] = $xpath->evaluate("string(" . $col['linkTo']['pid']['failvalue'] . ")", $doc);
+                continue;
             }
-
-            $vars['performances'][$key][] = $temp;
+              
+            $temp[$col['sField']] = l(
+              $temp[$col['sField']], 
+              "fedora/repository/".$xpath->evaluate("string(".$col['linkTo']['pid']['xpath'].")", $doc).(
+                (isset($col['linkTo']['page']['xpath'])? '/-/-/' . $xpath->evaluate($col['linkTo']['page']['xpath'], $doc):'')
+               ));
+          }
         }
-    }
-    $vars['performance_headers'] = $headers['associated'];
+      }
 
-    //FIXME (minor): Seems like setting/unsetting should be avoidable...  with
-    //  a custom "table" theme function?
-    //Unset "mystuff" (the stuff I don't want in the markup...)
-    $mystuff = array('sField', 'xpath', 'linkTo');
-    foreach ($headers['associated'] as $idx => $header) {
-        foreach ($header as $key => $value) {
-            if (in_array($key, $mystuff)) {
-                unset($vars['performance_headers'][$idx][$key]);
-            }
-        }
+      $vars['performances'][$key][] = $temp;
     }
+  }
+  $vars['performance_headers'] = $headers['associated'];
+
+  //FIXME (minor): Seems like setting/unsetting should be avoidable...  with
+  //  a custom "table" theme function?
+  //Unset "mystuff" (the stuff I don't want in the markup...)
+  $mystuff = array('sField', 'xpath', 'linkTo');
+  foreach ($headers['associated'] as $idx => $header) {
+    foreach ($header as $key => $value) {
+      if (in_array($key, $mystuff)) {
+        unset($vars['performance_headers'][$idx][$key]);
+      }
+    }
+  }
 }
 
 function template_preprocess_fjm_clamor_imagegallery(&$vars) {

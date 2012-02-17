@@ -19,12 +19,10 @@ function filterComposer($var) {
 }
     
 class SolrResults extends IslandoraSolrResults {
-
     function __construct() {
         parent::__construct();
-        drupal_add_css(drupal_get_path("module", "islandora_fjm") . "/css/islandora_fjm_solrResults.css");
+        drupal_add_css(drupal_get_path('module', 'fjm_clamor') . "/css/fjm-clamor-solr-results.css");
     }
-    
 
     function displayFJMResults($solrQueryProcessor) {
       $apacheSolrResult = $solrQueryProcessor->solrResult;
@@ -384,8 +382,10 @@ class SolrResults extends IslandoraSolrResults {
                     });
                 })
             });', 'inline');
-            drupal_add_css('sites/all/libraries/jquery.ui/themes/base/ui.theme.css', 'module');
-            drupal_add_css('sites/all/libraries/jquery.ui/themes/base/ui.accordion.css', 'module');
+            
+            $jquery_ui_path = jquery_ui_get_path();
+            drupal_add_css("$jquery_ui_path/themes/base/ui.theme.css", 'module');
+            drupal_add_css("$jquery_ui_path/themes/base/ui.accordion.css", 'module');
         }
 
         $people = array('Compositores', 'Intérpretes');
@@ -412,12 +412,10 @@ class SolrResults extends IslandoraSolrResults {
             if (!empty($tab)) {              
               foreach($tab as &$contents) {
                 $count = count($contents['data']);
-                //dsm($contents);
                 if ($count > 0) {
                   $contents['data'][0]['class'] .= ' col-first';
                   $contents['data'][$count - 1]['class'] .= ' col-last';
                 }
-                //dsm($contents);
               }
                 $output .= theme('table', (isset($headers[$key]) ? $headers[$key] : array()), $tab, array('class' => "atm_browse_table atm_$key"), $groups[$key]);
               

@@ -3,6 +3,7 @@ description = Solr result formatting by type and ISLANDORACM callbacks
 dependencies[] = islandora_solr_search
 dependencies[] = fedora_repository
 dependencies[] = islandora_fjm
+dependencies[] = jquery_ui
 package = Fedora Repository
 version = 6.1dev
 core = 6.x
