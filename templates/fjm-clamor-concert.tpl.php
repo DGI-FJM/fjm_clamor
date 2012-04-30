@@ -74,13 +74,15 @@ drupal_set_title(t('Concerts'));
     </div><!--bottom right-->
     <div class="clearfix"></div>
   </div>
-  <?php if ($pagenumber != NULL && $pagenumber > 0) : ?>
-  <script type="text/javascript">
-      $(function() {
-        $f().onLoad(function() {
-          $("div.atm_track.concertOrder_<?php echo $pagenumber; ?>:first > a").click();
-        });
-      });
-  </script>
-  <?php endif;?>
+  <?php
+if ($pagenumber != NULL && $pagenumber > 0) :
+  drupal_add_js(<<<ENDJS
+\$(function() {
+  \$f().onLoad(function() {
+    \$("div.atm_track.concertOrder_$pagenumber:first > a").click();
+  });
+});
+ENDJS
+, 'inline');
+endif;?>
 </div>

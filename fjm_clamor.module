@@ -1,15 +1,164 @@
 <?php
 
+/**
+ * Implementation of hook_required_fedora_objects().
+ */
+function fjm_clamor_required_fedora_objects() {
+  $mod_path = drupal_get_path('module', 'fjm_clamor') . '/fedora_objects';
+  return array(
+    'fjm_clamor' => array(
+      'module' => 'fjm_clamor',
+      'title' => t('Clamor Fedora Objects'),
+      'objects' => array(
+        array(
+          'pid' => 'atm:concertCollectionCModel',
+          'label' => 'Concert Collection Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/concert_collection/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
+        ),
+        array(
+          'pid' => 'atm:concertCollection',
+          'label' => 'Concert Collection',
+          'cmodel' => 'info:fedora/atm:concertCollectionCModel',
+          'parent' => 'info:fedora/islandora:root',
+        ),
+        array(
+          'pid' => 'atm:personCollectionCModel',
+          'label' => 'Person Collection Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/person_collection/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
+        ),
+        array(
+          'pid' => 'atm:personCollection',
+          'label' => 'Person Collection',
+          'cmodel' => 'info:fedora/atm:personCollectionCModel',
+          'parent' => 'info:fedora/islandora:root',
+        ),
+        array(
+          'pid' => 'atm:concertCModel',
+          'label' => 'Concert Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/concert/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
+        ),
+        array(
+          'pid' => 'atm:groupCModel',
+          'label' => 'Group Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+        ),
+        array(
+          'pid' => 'atm:imageCModel',
+          'label' => 'Image Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+        ),
+        array(
+          'pid' => 'atm:instrumentCModel',
+          'label' => 'Instrument Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+        ),
+        array(
+          'pid' => 'atm:instrumentClassCModel',
+          'label' => 'Instrument Class Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+        ),
+        array(
+          'pid' => 'atm:lectureCModel',
+          'label' => 'Lecture Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+        ),
+        array(
+          'pid' => 'atm:movementCModel',
+          'label' => 'Movement Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+        ),
+        array(
+          'pid' => 'atm:performanceCModel',
+          'label' => 'Performance Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+        ),
+        array(
+          'pid' => 'atm:personCModel',
+          'label' => 'Person Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/person/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
+        ),
+        array(
+          'pid' => 'atm:programCModel',
+          'label' => 'Concert Program Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/program/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
+        ),
+        array(
+          'pid' => 'atm:scoreCModel',
+          'label' => 'Score Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/score/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
+        ),
+      ),
+    )
+  );
+}
+
+
+/**
+ * Implementation of hook_islandora_solr_primary_display().
+ */
 function fjm_clamor_islandora_solr_primary_display() {
   return array(
-    // 'machine-name' = array(
-    //   'name' => 'Human Readable Name',
-    //   'module' => 'module_name',
-    //   'file' => 'FileName.inc',
-    //   'class' => 'ClassName',
-    //   'function' => 'function_name',
-    //   'description' => 'A description of the display profile',
-    // );
     'fjm_clamor' => array(
       'name' => t('Clamor display'),
       'module' => 'fjm_clamor',
@@ -21,6 +170,9 @@ function fjm_clamor_islandora_solr_primary_display() {
   );
 }
 
+/**
+ * Implementation of hook_theme().
+ */
 function fjm_clamor_theme() {
   return array(
     'fjm_clamor_solr_result' => array(
@@ -135,6 +287,9 @@ function fjm_clamor_theme() {
   );
 }
 
+/**
+ * Implementation of hook_preprocess_fjm_clamor_flowplayer().
+ */
 function template_preprocess_fjm_clamor_flowplayer(&$vars) {
   $mod_base = drupal_get_path('module', 'fjm_clamor');
 
@@ -143,6 +298,9 @@ function template_preprocess_fjm_clamor_flowplayer(&$vars) {
   drupal_add_css("$mod_base/css/fjm-clamor-player.css", 'module'); 
 }
 
+/**
+ * Implementation of hook_preprocess_fjm_clamor_solr_result().
+ */
 function template_preprocess_fjm_clamor_solr_result(&$vars) {
     $result = $vars['item'];
 
@@ -305,19 +463,22 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
   $pid = $vars['pid'];
   //$concert = array();
   
-  $concertResults = islandora_fjm_perform_solr_q("PID:\"$pid\"", 
-  implode(',',
-    array(
-      "PID",
-      "atm_concert_title_s",
-      "atm_concert_cycle_s",
-      "atm_concert_date_dt",
-      "atm_concert_description_s",
-      "atm_concert_program_pdf_pid_s",
-      "atm_concert_program_titn_s"
-    )
-  ),
-  array());
+  $concertResults = islandora_fjm_perform_solr_q(
+    "PID:\"$pid\"", 
+    implode(',',
+      array(
+        "PID",
+        "atm_concert_title_s",
+        "atm_concert_cycle_s",
+        "atm_concert_date_dt",
+        "atm_concert_description_s",
+        "atm_concert_program_pdf_pid_s",
+        "atm_concert_program_titn_s",
+      )
+    ),
+    array()
+  );
+  
   $solrparts = parse_url(variable_get('islandora_solr_search_block_url', 'http://localhost:8080/solr/'));
   $solr = new Apache_Solr_Service($solrparts['host'], $solrparts['port'], $solrparts['path']);
   $perf_results = $solr->search("*:*", 0, 1000, array(
@@ -555,7 +716,8 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
 
 /**
  * Assemble the required information given the PID of a score.
- * @param &array $vars Input/output
+ * @param $vars &array
+ *   Input/output
  */
 function template_preprocess_fjm_clamor_score(&$vars) {
   $pid = $vars['pid'];

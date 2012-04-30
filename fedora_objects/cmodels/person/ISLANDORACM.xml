@@ -1,0 +1,10 @@
+<content_model xmlns="http://www.islandora.ca" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.islandora.ca http://localhost/islandoracm.xsd"
+  name="personCModel"
+  version="1">
+  <mimetypes></mimetypes>
+  <datastreams>
+    <datastream dsid="EAC-CPF">
+      <display_method class="fjm_hooks" file="includes/hooks.inc" method="showPerson" module="fjm_clamor"></display_method>
+    </datastream>
+  </datastreams>
+</content_model>

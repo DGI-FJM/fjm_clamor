@@ -31,8 +31,6 @@ class fjm_hooks {
     return theme('fjm_clamor_concert', $this->pid, $pagenumber);
   }
   
-  //TODO: Cleanup ((Rather) Bad variable names)
-  //TODO:  Need to add link with Titn
   function showScore($pagenumber = NULL) {
     return theme('fjm_clamor_score', $this->pid);
   }

@@ -6,11 +6,6 @@
  */
 module_load_include('inc', 'islandora_solr_search', 'IslandoraSolrResults');
 
-//FIXME (minor):  Should change local references to use the moved function.
-function makeArray($in) {
-  return IslandoraSolrResults::makeArray($in);
-}
-
 function filterComposer($var) {
     if (is_callable("dsm")) {
         //dsm($var);
@@ -46,7 +41,7 @@ class SolrResults extends IslandoraSolrResults {
         'Conciertos' => t('List of Concerts')
       );
       $title = $map['Conciertos'];
-      foreach (makeArray($solrQueryProcessor->solrParams['fq']) as $filter) {
+      foreach ((array)$solrQueryProcessor->solrParams['fq'] as $filter) {
         if(strpos($filter, $field) === 0) {
           //Assuming form of $field:"$title", gotta get rid of the field name and puctuation.
           $title = $map[substr($filter, strlen($field) + 2, -1)];
@@ -272,7 +267,7 @@ class SolrResults extends IslandoraSolrResults {
         
         //Get the fq...
         $fq_type = '';
-        foreach(makeArray($results->responseHeader->params->fq) as $filter) {
+        foreach((array)$results->responseHeader->params->fq as $filter) {
           $matches = array();
           if (preg_match('/atm_type_ms\\:"(.+)"/', $filter, $matches) === 1) {
             //dsm($matches);
@@ -392,16 +387,16 @@ class SolrResults extends IslandoraSolrResults {
         //Render the table for each content type.
         foreach ($table as $key => $tab) {
             //Deliciously hack-ful...  Handle the people differently, so as to make an 'A-Z' display...
-            if (array_search($key, $people) !== FALSE && array_search("atm_type_ms:\"$key\"", makeArray($results->responseHeader->params->fq)) !== FALSE) {
+            if (array_search($key, $people) !== FALSE && array_search("atm_type_ms:\"$key\"", (array)$results->responseHeader->params->fq) !== FALSE) {
                 $output .= '<ul class="atm_solr_letterblock">';
-                $fq_array = array_filter(makeArray($results->responseHeader->params->fq), "filterComposer");
+                $fq_array = array_filter((array)$results->responseHeader->params->fq, "filterComposer");
                 $query = $results->responseHeader->params->q;
                 $output .= '<li>'. l(t('ALL'), 'islandora/solr/search/'. $query .'/'. implode('~', $fq_array)) .'</li>';
                 foreach (range('A', 'Z') as $letter) {
                     $output .= '<li>'. l($letter, 'islandora/solr/search/' . 
                         $query .'/'. implode('~', array_merge(
                                 $fq_array, 
-                                makeArray("eaccpf_name_surname_es:$letter*")
+                                (array)"eaccpf_name_surname_es:$letter*"
                             )
                         )
                     ) .'</li>';
