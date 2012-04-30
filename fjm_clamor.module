@@ -1,6 +1,62 @@
 <?php
 
 /**
+ * Implementation of hook_islandora_tabs().
+ * @param $cmodels array
+ *   An array of ContentModel objects
+ * @param $pid string
+ *   A string containing the pid of the object to render.
+ * @param $page_number integer
+ *   @deprecated
+ *   An integer for the page to display.
+ * @return array
+ *   An array of tabpages to inject into the Islandora display.
+ */
+function fjm_clamor_islandora_tabs($islandora_cmodels, $pid, $page_number) {
+  $to_return = array();
+  
+  $model_query = <<<END_QUERY
+PREFIX fm: <info:fedora/fedora-system:def/model#>
+SELECT ?model
+WHERE {
+  <info:fedora/$pid> fm:hasModel ?model ;
+                     fm:state fm:Active .
+}
+END_QUERY;
+  $all_cmodels = ObjectHelper::performSparqlQuery($model_query);
+  //dsm($model_query, 'query');
+  //dsm($all_cmodels, 'models');
+  foreach ($all_cmodels as $cmodel) {
+    $cm_pid = $cmodel['model'];
+    switch($cm_pid) {
+      case 'atm:concertCycleCModel':
+      //case 'atm:concertCollectionCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-concert-collection');
+        $to_return += ConcertCollectionDisplay::addTabsStatically($pid, $page_number);
+        break;
+      case 'atm:concertCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-concert');
+        $to_return += ConcertDisplay::addTabsStatically($pid, $page_number);
+        break;
+      case 'atm:personCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-person');
+        $to_return += PersonDisplay::addTabsStatically($pid, $page_number);
+        break;
+      case 'atm:programCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-program');
+        $to_return += ProgramDisplay::addTabsStatically($pid, $page_number);
+        break;
+      case 'atm:scoreCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-score');
+        $to_return += ScoreDisplay::addTabsStatically($pid, $page_number);
+        break;
+    }
+  }
+  
+  return $to_return;
+}
+
+/**
  * Implementation of hook_required_fedora_objects().
  */
 function fjm_clamor_required_fedora_objects() {

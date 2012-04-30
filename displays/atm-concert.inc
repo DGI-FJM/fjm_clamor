@@ -1,6 +1,6 @@
 <?php
 
-module_load_include('inc', 'fjm_clamor/basic-display');
+module_load_include('inc', 'fjm_clamor', 'displays/basic-display');
 
 function fjm_clamor_performance_form(&$form_state, $pid = NULL) {
   $storage =& $form_state['storage'];
@@ -49,7 +49,7 @@ function fjm_clamor_performance_form(&$form_state, $pid = NULL) {
     
     //If contains MP3; show selection (autocomplete or file upload?)
     if ($storage['hierarchy'] == 'performance') {
-      $form['mp3'] => array(
+      $form['mp3'] = array(
         '#type' => 'textfield',
         '#title' => t('Audio file'),
         '#description' => t('Select the audio file representing this performance.'),
@@ -156,38 +156,50 @@ function fjm_clamor_performance_form_submit($form, &$form_state) {
 }
 
 class ConcertDisplay extends BasicDisplay {
-  public function addTabs($piece_index = NULL) {
+  public static function addTabsStatically($pid, $piece_index = NULL) {
     $tabset = array();
     
     if (user_access('view fedora collection')) {
       $tabset['view'] = array(
-        '#type' => 'tabpage',
-        '#title' => t('View'),
-        '#content' => theme('fjm_clamor_concert', $this->pid, $piece_index),
-        '#tab_name' => 'view-content',
+          '#type' => 'tabpage',
+          '#title' => t('View'),
+          '#content' => theme('fjm_clamor_concert', $pid, $piece_index),
+          '#tab_name' => 'view-content',
       );
     }
     
     //Allow editing of the Concert Metadata
     if (user_access('edit fedora meta data')) {
-      $form = drupal_get_form('fedora_repository_edit_qdc_form', $this->pid, 'MODS');
+      //$form = drupal_get_form('fedora_repository_edit_qdc_form', $pid, 'MODS');
     
       $tabset['edit_metadata'] = array(
-        '#type' => 'tabpage',
-        '#title' => t('Edit Concert Metadata'),
-        '#content' => $form,
-        '#tab_name' => 'edit_metadata'
+          '#type' => 'tabpage',
+          '#title' => t('Edit Concert Metadata'),
+          '#content' => $form,
+          '#tab_name' => 'edit_metadata'
       );
     }
     
     //Allow addition of Performances to the Concert
     if (user_access('ingest new fedora objects')) {
-      
+      $tabset['performance-ingest'] = array(
+          '#type' => 'tabpage',
+          '#title' => t('Add New Performance'),
+          //'#weight' => $i++,
+          '#tab_name' => 'performance-ingest',
+          //'#content' => drupal_get_form('fedora_repository_ingest_form', $pid, 'collection', 'atm:concertCModel'),
+      );
     }
     
     //Allow addition of Lectures/Conferences to the Concert
     if (user_access('ingest new fedora objects')) {
-      
+      $tabset['lecture-ingest'] = array(
+          '#type' => 'tabpage',
+          '#title' => t('Add New Lecture'),
+          //'#weight' => $i++,
+          '#tab_name' => 'lecture-ingest',
+          //'#content' => drupal_get_form('fedora_repository_ingest_form', $pid, 'collection', 'atm:lectureCModel'),
+      );
     }
     
     return $tabset;

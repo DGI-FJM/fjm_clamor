@@ -24,11 +24,13 @@ class fjm_hooks {
   
   /**
    *
-   * @param String $pagenumber Used as a bit of a hack to determine which song to start playing, if set.
-   * @return string 
+   * @param $pagenumber string
+   *   Used as a bit of a hack to determine which song to start playing, if set.
+   * @return String 
    */
   function showConcert($pagenumber = NULL) {
-    return theme('fjm_clamor_concert', $this->pid, $pagenumber);
+    return "<span>lol</span>";
+    //return theme('fjm_clamor_concert', $this->pid, $pagenumber);
   }
   
   function showScore($pagenumber = NULL) {
