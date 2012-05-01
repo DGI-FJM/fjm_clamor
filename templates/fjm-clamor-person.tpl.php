@@ -2,7 +2,10 @@
 /**
  * Template for a person/composer
  */
-drupal_set_title(t('Composers'));
+drupal_set_title(t('Composer: @first @last', array(
+  '@first' => $name['first'],
+  '@last' => $name['last'],
+)));
 ?>
 <div class="islandora_fjm_person">
   <div class='leftcolumn'>
@@ -14,14 +17,12 @@ drupal_set_title(t('Composers'));
   ?></div>
   </div>
   <div class='rightcolumn'>
-  <h2><?php echo $name['first'] . " " . $name['last'] ?></h2>
-  <h3>
-      <?php echo ((!empty($date['birth']) && $date['birth'] !== FALSE) ? ($date['birth']) : t('unknown'))
-          . ' - ' . ((!empty($date['death']) && $date['death'] !== FALSE) ? ($date['death']) : ''); ?>
-  </h3>
-  <div class="fjm_person_bio">
-      <?php echo $biography ?>
-  </div>
-
+    <h3>
+        <?php echo $name['first'] . " " . $name['last'] . ': ' . ((!empty($date['birth']) && $date['birth'] !== FALSE) ? ($date['birth']) : t('unknown'))
+            . ' - ' . ((!empty($date['death']) && $date['death'] !== FALSE) ? ($date['death']) : ''); ?>
+    </h3>
+    <div class="fjm_person_bio">
+        <?php echo $biography ?>
+    </div>
   </div>
 </div>

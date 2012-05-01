@@ -3,14 +3,22 @@
 module_load_include('inc', 'fjm_clamor', 'displays/basic-display');
 
 class ConcertCollectionDisplay extends BasicDisplay {
-  public static function addTabsStatically($pid, $page = NULL) {
-    $tabset = array();
-    
-    if (user_access('view fedora collection')) {
-      module_load_include('inc', 'fedora_repository', 'ObjectHelper');
-      module_load_include('inc', 'fedora_repository', 'CollectionClass');
-      
-      $collection_query = <<<END_QUERY
+  /**
+   * Get the query to return all the objects in this collection.
+   * 
+   * @param $pid string
+   *   A string containing the PID of the collection object.
+   * @return string
+   *   A string containing a Sparql query to obtain a set of results, each
+   *   comprising a child "object", it's "title" and optionally a PID of a
+   *   "thumbnail" datastream (that is, something like <info:fedora/PID/DSID>;
+   *   the "info:fedora/" chunk should be stripped, and then the PID/DSID chunk
+   *   can be appended to create a path like "fedora/repository/PID/DSID", to
+   *   actually use the thumbnail. 
+   */
+  protected static function getCollectionQuery($pid) {
+    //Get all concerts which are a member of this cycle/series, ordered by title.
+    return <<<END_QUERY
 PREFIX fre: <info:fedora/fedora-system:def/relations-external#>
 PREFIX fm: <info:fedora/fedora-system:def/model#>
 PREFIX fv: <info:fedora/fedora-system:def/view#>
@@ -19,8 +27,9 @@ PREFIX atm-rel: <http://digital.march.es/atmusica#>
 SELECT ?object ?title ?thumbnail
 WHERE {
   ?object fre:isMemberOf <info:fedora/{$pid}> ;
-         dc:title ?title ;
-         fm:state fm:Active .
+          dc:title ?title ;
+          fm:state fm:Active ;
+          fm:hasModel <info:fedora/atm:concertCModel> .
   OPTIONAL {
     ?thumbnail_obj atm-rel:isIconOf ?object ;
                    fm:state fm:Active ;
@@ -28,28 +37,61 @@ WHERE {
     ?thumbnail fv:disseminationType <info:fedora/*/TN> .
   }
 }
+ORDER BY ASC(?title)
 END_QUERY;
-      $results = ObjectHelper::performSparqlQuery($collection_query);
-      
-      dsm($collection_query, 'collection query');
-      dsm($results, 'results');
-      $tabset['view'] = array(
-          '#type' => 'tabpage',
-          '#title' => t('View'),
-          '#tab_name' => 'view-content',
-          'content' => CollectionClass::assembleCollectionView($results),
-      );
+  }
+  
+  /**
+   * Get an array to create a tabpage containing the collection.
+   * 
+   * @param $pid string
+   *   A string containing the PID of this item.
+   * @return array
+   *   An array representing a tabpage.  
+   */
+  protected static function getCollectionTab($pid) {
+    module_load_include('inc', 'fedora_repository', 'ObjectHelper');
+    module_load_include('inc', 'fedora_repository', 'CollectionClass');
+    
+    $results = ObjectHelper::performSparqlQuery(self::getCollectionQuery($pid));
+    
+    //dsm($collection_query, 'collection query');
+    //dsm($results, 'results');
+    return array(
+        '#type' => 'tabpage',
+        '#title' => t('View'),
+        '#tab_name' => 'view-content',
+        'content' => CollectionClass::assembleCollectionView($results),
+    );
+  }
+  
+  /**
+   * Get the tabs for this content model display.
+   * 
+   * @param $pid string
+   *   A string containing the pid of this object.
+   * @param $page integer
+   *   An integer representing which page should be shown (not really used, in
+   *   favor of Drupal-native paging.
+   * @return array
+   *   An array of arrays representing a set of tabpages.
+   */
+  public static function addTabsStatically($pid, $page = NULL) {
+    $tabset = array();
+    
+    if (user_access('view fedora collection')) {
+      $tabset['view'] = self::getCollectionTab($pid);
     }
     
     //Allow editing of the Collection-level (really, there's just the title) Metadata
     if (user_access('edit fedora meta data')) {
       //$form = drupal_get_form('fedora_repository_edit_qdc_form', $pid, 'DC');
     
-      $tabset['edit_metadata'] = array(
+      $tabset['edit-metadata'] = array(
           '#type' => 'tabpage',
-          '#title' => t('Edit Collection Metadata'),
+          '#title' => t('Edit Metadata'),
           '#content' => $form,
-          '#tab_name' => 'edit_metadata'
+          '#tab_name' => 'edit-metadata'
       );
     }
     
@@ -57,11 +99,11 @@ END_QUERY;
     if (user_access('ingest new fedora objects')) {
       //$form = drupal_get_form('fedora_repository_ingest_form', $pid);
     
-      $tabset['edit_metadata'] = array(
+      $tabset['ingest-concert'] = array(
           '#type' => 'tabpage',
           '#title' => t('Add New Concert'),
           '#content' => $form,
-          '#tab_name' => 'edit_metadata'
+          '#tab_name' => 'ingest-concert',
       );
     }
     

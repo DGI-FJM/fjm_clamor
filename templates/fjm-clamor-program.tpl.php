@@ -3,10 +3,13 @@
  * @param array<string> $concert Associative array of strings pertaining to the concert
  * @param string $pid The pid of the program.
  */
-drupal_set_title(t('Programs'));
+drupal_set_title(t('Program: @title - @year', array(
+  '@title' => $concert['title'],
+  '@year' => $concert['year'],
+)));
 ?>
 <div class="islandora_fjm_program">
-  <h2><?php echo "{$concert['title']} - ({$concert['year']})"; ?></h2>
+  <!-- <h2><?php echo "{$concert['title']} - ({$concert['year']})"; ?></h2> -->
   <?php 
   echo theme('fjm_clamor_flexpaper', $pid);?>
   <h3><?php echo $concert['cycle']; ?></h3>

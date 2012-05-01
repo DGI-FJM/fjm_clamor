@@ -29,15 +29,15 @@ class fjm_hooks {
    * @return String 
    */
   function showConcert($pagenumber = NULL) {
-    return "<span>lol</span>";
+    //return "<span>lol</span>";
     //return theme('fjm_clamor_concert', $this->pid, $pagenumber);
   }
   
   function showScore($pagenumber = NULL) {
-    return theme('fjm_clamor_score', $this->pid);
+    //return theme('fjm_clamor_score', $this->pid);
   }
   
   function showProgram($pagenumber = NULL) {
-    return theme('fjm_clamor_program', $this->pid);
+    //return theme('fjm_clamor_program', $this->pid);
   }
 }

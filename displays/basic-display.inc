@@ -11,7 +11,7 @@ abstract class BasicDisplay {
     $tabset = array();
     
     $tabset['test'] = array(
-      '#value' => '<span>blargh</span>',
+      '#value' => '<span>This display still needs to be completed.</span>',
     );
     
     return $tabset;

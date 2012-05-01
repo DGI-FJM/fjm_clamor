@@ -1,8 +1,8 @@
 <?php 
-drupal_set_title(t('Concerts'));
+drupal_set_title(t('Concert: @title', array('@title' => $concert['title'])));
 ?>
 <div class="islandora_fjm_concert">
-  <h2><?php echo $concert['title']; ?></h2>
+  <!-- <h2><?php echo $concert['title']; ?></h2>  -->
   <div class="atm_concert_top">
     <div class="leftcolumn">
       <div class="block">
