@@ -39,7 +39,7 @@ drupal_set_title(t('Concert: @title', array('@title' => $concert['title'])));
       //TODO:  Need to (better) determine whether or not to show the player...  Or just always show it?
       if (sizeof($concert['performance_rows']) + sizeof($concert['lecture_rows']) > 0)
       {
-          echo theme('islandora_fjm_atm_flowplayer');
+          echo theme('fjm_clamor_flowplayer');
       }
       ?>
       </div>
