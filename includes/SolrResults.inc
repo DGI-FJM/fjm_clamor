@@ -28,7 +28,7 @@ class SolrResults extends IslandoraSolrResults {
       // Initialize drupal-style pager
       islandora_solr_search_pager_init($total, $solrQueryProcessor->solrLimit);
 
-      $output .= $this->addSecondaries();
+      $output .= $this->addSecondaries($solrQueryProcessor);
 
       $field = 'atm_type_ms';
       $map = array(
@@ -390,16 +390,31 @@ class SolrResults extends IslandoraSolrResults {
             if (array_search($key, $people) !== FALSE && array_search("atm_type_ms:\"$key\"", (array)$results->responseHeader->params->fq) !== FALSE) {
                 $output .= '<ul class="atm_solr_letterblock">';
                 $fq_array = array_filter((array)$results->responseHeader->params->fq, "filterComposer");
+                $selected = array_values(array_diff((array)$results->responseHeader->params->fq, $fq_array));
+                if (count($selected) > 0) {
+                  $first = $selected[0];
+                  $selected = substr($first, strrpos($first, ':', -2) + 1 , -1);
+                }
                 $query = $results->responseHeader->params->q;
-                $output .= '<li>'. l(t('ALL'), 'islandora/solr/search/'. $query .'/'. implode('~', $fq_array)) .'</li>';
+                $output .= '<li>'. l(t('ALL'), 'islandora/solr/search/'. $query, array('attributes' => array('class' => (empty($selected) ? 'selected' : '')), 'query' => array('f' => $fq_array))) .'</li>';
                 foreach (range('A', 'Z') as $letter) {
-                    $output .= '<li>'. l($letter, 'islandora/solr/search/' . 
-                        $query .'/'. implode('~', array_merge(
-                                $fq_array, 
-                                (array)"eaccpf_name_surname_es:$letter*"
-                            )
+                    $output .= '<li>';
+                    $output .= l(
+                      $letter,
+                      'islandora/solr/search/' . $query,
+                       array(
+                         'query' => array(
+                           'f' => array_merge(
+                             $fq_array, 
+                             (array)"eaccpf_name_surname_es:$letter*"
+                            ),
+                          ),
+                          'attributes' => array(
+                            'class' => (($letter == $selected) ? 'selected' : '')
+                          ),
                         )
-                    ) .'</li>';
+                    );
+                    $output .= '</li>';
                 }
                 $output .= '</ul>';
             }
