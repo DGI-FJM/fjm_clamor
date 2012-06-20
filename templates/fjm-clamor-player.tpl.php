@@ -1,4 +1,5 @@
-<?php  
+<?php 
+global $base_url; 
 $trackingCode = variable_get('googleanalytics_account', NULL); ?>
 
 <div class="player" id="atm_player"></div>
@@ -38,7 +39,7 @@ $trackingCode = variable_get('googleanalytics_account', NULL); ?>
         },
         content: {
           url: "<?php echo $base; ?>/flowplayer.content-3.2.0.swf",
-          stylesheet: "<?php echo drupal_get_path('module', 'fjm_clamor'); ?>/css/fjm-clamor-player.css",
+          stylesheet: "<?php echo "$base_url/" . drupal_get_path('module', 'fjm_clamor'); ?>/css/fjm-clamor-player.css",
           width: '95%',
           height: '60%'
         }
