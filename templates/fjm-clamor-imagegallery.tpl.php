@@ -30,9 +30,11 @@ foreach ($images as $image):
               <img src="<?php echo $image['thumbnail']?>" title="<?php echo $image['alt']?>" path="<?php echo $image['path']?>"></img>
           </li>
   <?php  endif;
-      endforeach; ?>
+      endforeach; 
+      if (count($images) > 0): ?>
       </ul>
-  <?php if(sizeof($images) > 1):?>
+  <?php 
+      if(sizeof($images) > 1):?>
       <script type="text/javascript">
           //FIXME (minor): Might be a good idea to get this JS out of here? 
           //  (into another file, that is...)
@@ -55,4 +57,5 @@ foreach ($images as $image):
       endif;
       lightbox2_add_files(); ?>
   </div>
+  <?php endif;?>
 </div>

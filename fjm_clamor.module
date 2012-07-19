@@ -1,5 +1,28 @@
 <?php
 
+function fjm_clamor_menu() {
+  return array(
+    'fjm_clamor/movement' => array(
+      'page callback' => 'fjm_clamor_movement',
+      'file' => 'displays/atm-concert.inc',
+      'access arguments' => array('ingest new fedora objects'),
+      'type' => MENU_CALLBACK,
+    ),
+    'fjm_clamor/score_autocomplete' => array(
+      'page callback' => 'fjm_clamor_score_autocomplete',
+      'file' => 'displays/atm-concert.inc',
+      'access arguments' => array('ingest new fedora objects'),
+      'type' => MENU_CALLBACK,
+    ),
+    'fjm_clamor/composer_autocomplete' => array(
+      'page callback' => 'fjm_clamor_composer_autocomplete',
+      'file' => 'displays/atm-score-collection.inc',
+      'access arguments' => array('ingest new fedora objects'),
+      'type' => MENU_CALLBACK,
+    ),
+  );
+}
+
 /**
  * Implementation of hook_islandora_tabs().
  * @param $cmodels array
@@ -24,19 +47,29 @@ WHERE {
 }
 END_QUERY;
   $all_cmodels = ObjectHelper::performSparqlQuery($model_query);
-  //dsm($model_query, 'query');
-  //dsm($all_cmodels, 'models');
+
   foreach ($all_cmodels as $cmodel) {
     $cm_pid = $cmodel['model'];
     switch($cm_pid) {
+      case 'atm:cycleCollectionCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-cycle-collection');
+        $to_return += CycleCollectionDisplay::addTabsStatically($pid, $page_number);
+        break;
       case 'atm:concertCycleCModel':
-      //case 'atm:concertCollectionCModel':
         module_load_include('inc', 'fjm_clamor', 'displays/atm-concert-collection');
         $to_return += ConcertCollectionDisplay::addTabsStatically($pid, $page_number);
         break;
       case 'atm:concertCModel':
         module_load_include('inc', 'fjm_clamor', 'displays/atm-concert');
         $to_return += ConcertDisplay::addTabsStatically($pid, $page_number);
+        break;
+      case 'atm:personCollectionCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-person-collection');
+        $to_return += PersonCollectionDisplay::addTabsStatically($pid, $page_number);
+        break;
+      case 'atm:scoreCollectionCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-score-collection');
+        $to_return += ScoreCollectionDisplay::addTabsStatically($pid, $page_number);
         break;
       case 'atm:personCModel':
         module_load_include('inc', 'fjm_clamor', 'displays/atm-person');
@@ -84,7 +117,7 @@ function fjm_clamor_required_fedora_objects() {
           'pid' => 'atm:concertCollection',
           'label' => 'Concert Collection',
           'cmodel' => 'info:fedora/atm:concertCollectionCModel',
-          'parent' => 'info:fedora/islandora:root',
+          'parent' => 'info:fedora/atm:top',
         ),
         array(
           'pid' => 'atm:personCollectionCModel',
@@ -104,7 +137,7 @@ function fjm_clamor_required_fedora_objects() {
           'pid' => 'atm:personCollection',
           'label' => 'Person Collection',
           'cmodel' => 'info:fedora/atm:personCollectionCModel',
-          'parent' => 'info:fedora/islandora:root',
+          'parent' => 'info:fedora/atm:top',
         ),
         array(
           'pid' => 'atm:concertCModel',
@@ -231,6 +264,9 @@ function fjm_clamor_islandora_solr_primary_display() {
  */
 function fjm_clamor_theme() {
   return array(
+    'fjm_clamor_draggable_table' => array(
+      'file' => 'displays/atm-concert.inc',
+    ),
     'fjm_clamor_solr_result' => array(
         'arguments' => array(
             'item' => NULL
@@ -510,6 +546,14 @@ function template_preprocess_fjm_clamor_solr_result(&$vars) {
     $vars['item'] = $toReturn;
 }
 
+function _fjm_clamor_map_movements($pid, $name, $mp3) {
+  return array(
+    'pid'=> $pid,
+    'name' => $name,
+    'hasMP3' => $mp3,
+  );
+}
+
 /**
  * @todo Complete...
  * @param array $vars 
@@ -519,63 +563,61 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
   $pid = $vars['pid'];
   //$concert = array();
   
-  $concertResults = islandora_fjm_perform_solr_q(
-    "PID:\"$pid\"", 
-    implode(',',
-      array(
-        "PID",
-        "atm_concert_title_s",
-        "atm_concert_cycle_s",
-        "atm_concert_date_dt",
-        "atm_concert_description_s",
-        "atm_concert_program_pdf_pid_s",
-        "atm_concert_program_titn_s",
-      )
+  module_load_include('inc', 'islandora_solr_search', 'IslandoraSolrQueryProcessor');
+  $qp = new IslandoraSolrQueryProcessor();
+  
+  $qp->solrParams = array(
+    'fl' => array(
+      "PID",
+      "atm_concert_title_s",
+      "atm_concert_cycle_s",
+      "atm_concert_date_dt",
+      "atm_concert_description_s",
+      "atm_concert_program_pdf_pid_s",
+      "atm_concert_program_titn_s",
     ),
-    array()
   );
   
-  $solrparts = parse_url(variable_get('islandora_solr_search_block_url', 'http://localhost:8080/solr/'));
-  $solr = new Apache_Solr_Service($solrparts['host'], $solrparts['port'], $solrparts['path']);
-  $perf_results = $solr->search("*:*", 0, 1000, array(
+  $qp->buildAndExecuteQuery("PID:\"$pid\"");
+  
+  $concertResults = new stdClass();
+  if (count($qp->solrResult->response->docs) > 0) {
+    $concertResults = $qp->solrResult->response->docs[0];
+    $qp->solrResult->response->docs = array();
+  }
+  
+  $qp->solrParams = array(
     'sort' => 'atm_performance_order_i asc',
     'fq' => array(
       'atm_type_s:"Obras"',
       "rels_isMemberOf_ms:\"$pid\""
     )
-  ));
-  
-  $lectureResults = islandora_fjm_perform_solr_q("atm_type_s:\"Archivo de voz\" AND rels_isMemberOf_ms:\"$pid\"",
-    implode(',',
-      array(
-        "PID",
-        "atm_lecture_title_s"
-      )),
-    array(
-        'rows' => '1000'
-    )
   );
-  $concert_xpath = new DOMXPath($concertResults);
-  $concert_doc = $concert_xpath->query('/response/result[@name="response"]/doc')->item(0);
+  $qp->buildAndExecuteQuery("*:*");
+  
+  $perf_results = array();
+  if (count($qp->solrResult->response->docs) > 0) {
+    $perf_results = $qp->solrResult->response->docs;
+    $qp->solrResult->response->docs = array();
+  }
 
-  $lecture_xpath = new DOMXPath($lectureResults);
   $concert = array(
-    'title' => $concert_xpath->evaluate('string(str[@name="atm_concert_title_s"]/text())', $concert_doc),
-    'cycle' => $concert_xpath->evaluate('string(str[@name="atm_concert_cycle_s"]/text())', $concert_doc),
-    'date' => new DateTime($concert_xpath->evaluate("string(normalize-space(date[@name='atm_concert_date_dt']/text()))", $concert_doc)),
-    'description' => $concert_xpath->evaluate('string(str[@name="atm_concert_description_s"]/text())', $concert_doc),
+    'title' => $concertResults->atm_concert_title_s,
+    'cycle' => $concertResults->atm_concert_cycle_s,
+    'date' => new DateTime($concertResults->atm_concert_date_dt),
+    'description' => $concertResults->atm_concert_description_s,
     'performance' => array(),
     'performance_rows' => array(),
     'lecture' => array(),
     'lecture_rows' => array(),
     'program' => array(
-      'pid' => $concert_xpath->evaluate('string(str[@name="atm_concert_program_pdf_pid_s"]/text())', $concert_doc),
-      'titn' => $concert_xpath->evaluate('string(str[@name="atm_concert_program_titn_s"]/text())', $concert_doc),
+      'pid' => $concertResults->atm_concert_program_pdf_pid_s,
+      'titn' => $concertResults->atm_concert_program_titn_s,
     )
   );
   
   $js_data = array('islandora_fjm' => array('piece' => array(), 'lecture' => array()));
-  foreach($perf_results->response->docs as &$doc) {
+  foreach($perf_results as $doc) {
     $performance = array(
         'pid' => $doc->PID,
         'piece' => $doc->atm_performance_piece_title_s,
@@ -588,11 +630,11 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
         'score_titn' => $doc->atm_performance_score_titn_s,
         'order' => $doc->rels_concertOrder_ms,
         'mp3stat' => ($doc->atm_performance_mp3_b === TRUE),
-        'movements' => islandora_fjm_zip(
-          'pid', (array)$doc->atm_performance_movement_ms,
-          'name', (array)$doc->atm_performance_movement_name_ms,
-          'hasMP3', (array)$doc->atm_performance_movement_mp3_ms
-        )
+        'movements' => array_map('_fjm_clamor_map_movements', 
+          (array)$doc->atm_performance_movement_ms,
+          (array)$doc->atm_performance_movement_name_ms,
+          (array)$doc->atm_performance_movement_mp3_ms
+        ),
     );
     
     $players = (array)$doc->atm_performance_player_ms;
@@ -698,10 +740,26 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
     $concert['performance_rows'] = array_merge($concert['performance_rows'], $performance['rows']);
   }
   
-  foreach ($lecture_xpath->query("/response/result[@name='response']/doc") as $node) {
+  $qp->buildAndExecuteQuery("atm_type_s:\"Archivo de voz\" AND rels_isMemberOf_ms:\"$pid\"",
+    array(
+      'fl'=> implode(',',
+        array(
+          "PID",
+          "atm_lecture_title_s"
+      )),
+      'rows' => '1000'
+    )
+  );
+  $lectureResults = array();
+  if (count($qp->solrResult->response->docs) > 0) {
+    $lectureResults = $qp->solrResult->response->docs;
+    $qp->solrResult->response->docs = array();
+  }
+  
+  foreach ($lectureResults as $lecture_result) {
       $lecture = array(
-          'pid' => $lecture_xpath->evaluate("string(str[@name='PID']/text())", $node),
-          'description' => $lecture_xpath->evaluate("string(str[@name='atm_lecture_title_s']/text())", $node),
+          'pid' => $lecture_result->PID,
+          'description' => $lecture_result->atm_lecture_title_s,
       );
       
       $playlist = array(
@@ -776,26 +834,44 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
  *   Input/output
  */
 function template_preprocess_fjm_clamor_score(&$vars) {
+  module_load_include('inc', 'islandora_solr_search', 'IslandoraSolrQueryProcessor');
+  $qp = new IslandoraSolrQueryProcessor();
+  
   $pid = $vars['pid'];
+  
+  $qp->solrParams = array(
+    'fl' => 'atm_score_title_s,atm_score_pdf_b,atm_score_composer_s,atm_score_titn_s',
+  );
+  $qp->buildAndExecuteQuery("PID:\"$pid\"");
   
   $base = drupal_get_path("module", "islandora_fjm");
   $output = '';
-  $score_xpath = new DOMXPath(islandora_fjm_perform_solr_q("PID:\"$pid\"",
-      "atm_score_title_s,atm_score_pdf_b,atm_score_composer_s,atm_score_titn_s"));
-  $score_result = $score_xpath->query("/response/result[@name='response']/doc")->item(0);
+
+  if (!empty($qp->solrResult->response->docs)) {
+    $vars['doc'] = $score_result = $qp->solrResult->response->docs[0];
+    dsm($score_result);
+    
+    $vars['title'] =  $score_result->atm_score_title_s;
+    $vars['composer'] = $score_result->atm_score_composer_s;
   
-  $vars['title'] = $score_xpath->evaluate("string(str[@name='atm_score_title_s']/text())", $score_result);
-  $vars['composer'] = $score_xpath->evaluate("string(str[@name='atm_score_composer_s']/text())", $score_result);
-
-  //FIXME:  This could at least use absolute being passed to the url function or something...
-  $modsUrl = 'http://' . $_SERVER['HTTP_HOST'] . url("fedora/repository/$pid/MODS"); 
-  $mods = DOMDocument::loadXML(do_curl($modsUrl));
-  if ($mods) {
-    $vars['abstract'] = $mods->getElementsByTagName('abstract')->item(0)->nodeValue;
-    $vars['notes'] = array();
-
-    foreach ($mods->getElementsByTagName('note') as $node) {
-      $vars['notes'][] = $node->nodeValue;
+    //FIXME:  This could at least use absolute being passed to the url function or something...
+    module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+    $item = new Fedora_Item($pid);
+    $mods_str = trim($item->get_datastream_dissemination('MODS'));
+    
+    if ($mods_str) {
+      $mods = DOMDocument::loadXML($mods_str);
+      if ($mods) {
+        $vars['abstract'] = $mods->getElementsByTagName('abstract')->item(0)->nodeValue;
+        $vars['notes'] = array();
+    
+        foreach ($mods->getElementsByTagName('note') as $node) {
+          $vars['notes'][] = $node->nodeValue;
+        }
+      }
+    }
+    else {
+      drupal_set_message(t('Failed to load MODS XML; some information may be missing.'), 'warning');
     }
   }
 }
@@ -842,23 +918,30 @@ function template_preprocess_fjm_clamor_program(&$vars) {
 function template_preprocess_fjm_clamor_person(&$vars) {
   $pid = $vars['pid'];
   
-  _islandora_fjm_user_agent_hack();
-  
   $eacdoc = new DOMDocument();
-  
-  if (!$eacdoc->loadXML(do_curl('http://' . $_SERVER['HTTP_HOST'] . url("fedora/repository/$pid/EAC-CPF")))) {
+  $eac_str = '';
+  $result = drupal_http_request(url("fedora/repository/$pid/EAC-CPF", array('absolute' => TRUE)));
+  if ((int)($result->code / 100) === 2) {
+    $eac_str = $result->data;
+  }
+  if (empty($eac_str) || !$eacdoc->loadXML($eac_str)) {
+    drupal_set_message('asdf');
     return;
   }
+  
   $eaccpf = new DOMXPath($eacdoc);
+
+  //XXX: Current live data is not namespaced...  This may cause some issues...
+  $eaccpf->registerNamespace('e', $eacdoc->documentElement->namespaceURI);  
   
   $vars['name'] = array(
-    'first' => $eaccpf->evaluate('string(/eac-cpf/cpfDescription/identity/nameEntry[@localType="primary"]/part[@localType="forename"])'),
-    'last' => $eaccpf->evaluate('string(/eac-cpf/cpfDescription/identity/nameEntry[@localType="primary"]/part[@localType="surname"])')
+    'first' => $eaccpf->evaluate('string(/e:eac-cpf/e:cpfDescription/e:identity/e:nameEntry[@localType="primary"]/e:part[@localType="forename"])'),
+    'last' => $eaccpf->evaluate('string(/e:eac-cpf/e:cpfDescription/e:identity/e:nameEntry[@localType="primary"]/e:part[@localType="surname"])')
   );
-  $vars['date']['birth'] = $eaccpf->evaluate('string(/eac-cpf/cpfDescription/description/existDates/dateRange/fromDate/@standardDate)');
-  $vars['date']['death'] = $eaccpf->evaluate('string(/eac-cpf/cpfDescription/description/existDates/dateRange/toDate/@standardDate)');
+  $vars['date']['birth'] = $eaccpf->evaluate('string(/e:eac-cpf/e:cpfDescription/e:description/e:existDates/e:dateRange/e:fromDate/@standardDate)');
+  $vars['date']['death'] = $eaccpf->evaluate('string(/e:eac-cpf/e:cpfDescription/e:description/e:existDates/e:dateRange/e:toDate/@standardDate)');
   
-  $vars['biography'] = $eacdoc->saveXML($eaccpf->evaluate('/eac-cpf/cpfDescription/description/biogHist[@localType="primary"]')->item(0));
+  $vars['biography'] = $eacdoc->saveXML($eaccpf->evaluate('/e:eac-cpf/e:cpfDescription/e:description/e:biogHist[@localType="primary"]/e:p | /e:eac-cpf/e:cpfDescription/e:description/e:biogHist/e:p')->item(0));
   if (strpos($vars['biography'], '&lt;p&gt;')) {
     $vars['biography'] = html_entity_decode($vars['biography']);
   }
@@ -986,4 +1069,126 @@ function fjm_clamor_preprocess_page(&$vars) {
   }
   $vars['classes_array'] = $classes;
   $vars['body_classes'] = implode(' ', $classes);
+}
+
+function fjm_clamor_islandora_content_model_forms_get_transforms() {
+  return array(
+    drupal_get_path('module', 'fjm_clamor') . '/xslt/copy_first_dc.xslt' => t('fjm_clamor--copy DC'),
+  );
+}
+
+function fjm_clamor_form_fedora_repository_ingest_form_alter(&$form, &$form_state) {
+  if ($form_state['storage']['content_model'] == 'atm:concertCModel') {
+    $form_state['storage']['pid_namespace'] = 'atm-test';
+    $form_state['storage']['parent_relation'] = 'isMemberOf';
+  }
+  elseif ($form_state['storage']['content_model'] == 'atm:personCModel') {
+    $form_state['storage']['pid_namespace'] = 'atm-test';
+    $form_state['storage']['parent_relation'] = 'isMemberOfCollection';
+    array_unshift($form['#submit'], 'fjm_clamor_person_fix_label');
+  }
+  elseif ($form_state['storage']['content_model'] == 'atm:scoreCModel') {
+    $form_state['storage']['pid_namespace'] = 'atm-test';
+    $form_state['storage']['parent_relation'] = 'isMemberOfCollection';
+    $form['#submit'][] = 'fjm_clamor_score_submit_add_composer_relation';
+    $form['pdf']['#type']['#tree'] = FALSE;
+    $form['#submit'][] = 'fjm_clamor_score_add_pdf';
+  }
+}
+
+function fjm_clamor_form_fedora_repository_edit_qdc_form_alter(&$form, &$form_state) {
+  dsm($form, 'qdc edit form');
+  dsm($form_state, 'qdc edit form state');
+  
+  if ($form['content_model_pid']['#value'] == 'atm:scoreCModel') {
+    //Get the composer, and fill in the default value.
+    if (empty($form['composer']['#default_value'])) {
+      module_load_include('inc', 'fedora_repository', 'ObjectHelper');
+      $pid = 
+      $q = <<<EOQ
+PREFIX atm-rel: <http://digital.march.es/atmusica#>
+FROM <#ri>
+SELECT ?composer
+WHERE {
+  <info:fedora/$pid> atm-rel:composedBy ?composer .
+}
+EOQ;
+      //XXX: Should only be one...  Anyway...
+      foreach (ObjectHelper::performSparqlQuery($q) as $result) {
+        $form['initial_composer'] = array(
+          '#type' => 'value',
+          '#value' => $result['composer'],
+        );
+        $form['composer']['#default_value'] = $result['composer'];
+        break;
+      }
+    }
+    
+    //Add in the submit handler to recreate the relation.
+    $form['#submit'][] = 'fjm_clamor_score_submit_add_composer_relation';
+    
+    $form['pdf']['#type']['#tree'] = FALSE;
+    $form['pdf']['#description'] = t('This will replace any PDF currently existing on this object.');
+    $form['#submit'][] = 'fjm_clamor_score_add_pdf';
+  }
+  elseif ($form['content_model_pid']['#value'] == 'atm:personCModel') {
+    array_unshift($form['#submit'], 'fjm_clamor_person_fix_label');
+  }
+}
+ 
+/**
+ * XXX:  This shouldn't strictly be necessary; however, we don't have provisions
+ *   for combining fields in form builder.
+ *   
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ */
+function fjm_clamor_person_fix_label(&$form, &$form_state) {
+  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+  $item = new Fedora_Item($form_state['values']['pid']);
+  $entries = $form_state['values']['cpfdesc']['general_ident']['ident']['name_entries'];
+  $primary = array_shift($entries);
+  foreach ($entries as $entry) {
+    if ($entry['primary'] == 'primary') {
+      $primary = $entry;
+      break;
+    }
+  }
+  
+  form_set_value($form['hidden-name'], t('!last, !first', array(
+    '!last' => $primary['surname'],
+    '!first' => $primary['forename'],
+  )), $form_state);
+}
+
+function fjm_clamor_score_submit_add_composer_relation(&$form, &$form_state) {
+  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+  $composer = $form_state['values']['composer'];
+  
+  //Get the pid of the created score,
+  $composed = $form_state['values']['pid'];
+  $item = new Fedora_Item($composed);
+
+  if (isset($form_state['values']['initial_composer']) && $form_state['values']['initial_composer'] != $form_state['values'][composer]) {
+    $item->purge_relationships('composedBy', NULL, 'http://digital.march.es/atmusica#');
+  }
+  
+  //and add the author relationship.
+  $item->add_relationship('composedBy', $form_state['values']['composer'], 'http://digital.march.es/atmusica#');
+}
+
+function fjm_clamor_score_add_pdf(&$form, &$form_state) {
+  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+  
+  $item = new Fedora_Item($form_state['values']['pid']);
+  if ($form_state['values']['pdf']) {
+    $pdf = $form_state['values']['pdf'];
+    
+    if (array_key_exists('PDF', $item->datastreams)) {
+      $item->modify_datastream($pdf->filepath, 'PDF', 'PDF datastream', 'application/pdf');
+    }
+    else {
+      $item->add_datastream_from_file($pdf->filepath, 'PDF', 'PDF datastream', 'application/pdf');
+    }
+  }
 }

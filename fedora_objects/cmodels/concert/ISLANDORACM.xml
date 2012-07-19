@@ -1,14 +1,8 @@
 <content_model xmlns="http://www.islandora.ca" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.islandora.ca http://localhost/islandoracm.xsd"
   name="concertCModel"
-  version="1">
+  version="2">
   <mimetypes></mimetypes>
   <datastreams>
-    <datastream dsid="MODS">
-      <display_method 
-        module="fjm_clamor"
-        file="displays/atm-concert.inc"
-        class="ConcertDisplay"
-        method="addTabs"/>
-    </datastream>
+    <datastream dsid="MODS"/>
   </datastreams>
 </content_model>
