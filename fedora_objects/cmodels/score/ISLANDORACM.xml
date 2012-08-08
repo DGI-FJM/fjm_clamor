@@ -1,9 +1,11 @@
 <content_model xmlns="http://www.islandora.ca" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.islandora.ca http://localhost/islandoracm.xsd"
   name="scoreCModel"
-  version="2">
+  version="3">
   <mimetypes></mimetypes>
   <ingest_rules></ingest_rules>
   <datastreams>
+    <datastream dsid="MODS"/>
+    <datastream dsid="PDF"/>
     <datastream dsid="SWF"/>
   </datastreams>
 </content_model>

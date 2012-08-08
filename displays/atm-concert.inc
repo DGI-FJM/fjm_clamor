@@ -206,7 +206,7 @@ function fjm_clamor_performance_ingest_form(&$form_state, $pid = NULL) {
         '#value' => $hier_ops[$storage['hierarchy']],
       ),
     );
-    
+   
     //If contains MP3; show selection (autocomplete or file upload?)
     if ($storage['hierarchy'] == 'performance') {
       $form['mp3'] = array(
@@ -312,13 +312,14 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
     //Store path to the selected score, and whether how/if we are adding MP3s.
     $storage['score'] = $values['score'];
     $storage['hierarchy'] = $values['hierarchy'];
-    
-    if ($storage['hierarchy'] != 'none') {
-      $storage['page'] = 1;
+
+    $storage['page'] = 1;
+    if ($storage['hierarchy'] == 'none') {
+      fjm_clamor_performance_ingest_form_submit($form, $form_state);
     }
   }
   elseif ($storage['page'] === 1) {
-    dsm($form_state, 'fs');
+    //dsm($form_state, 'fs');
     //Get'er done!
     if (isset($form_state['values']['submit'])) {
       module_load_include('inc', 'fedora_item', 'api/fedora_item');
@@ -376,12 +377,61 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
   }
 }
 
+function fjm_clamor_lecture_ingest_form(&$form_state, $pid = NULL) {
+  $form = array(
+    'parent_pid' => array(
+      '#type' => 'value',
+      '#value' => $pid,
+    ),
+    'file' => array(
+      '#type' => 'upload_element',
+      '#title' => t('Audio file'),
+    ),
+    'description' => array(
+      '#type' => 'textarea',
+      '#title' => t('Description'),
+      '#description' => t('A short description of the lecture.'),
+    ),
+    'submit' => array(
+      '#type' => 'submit',
+      '#value' => t('Submit'),
+    ),
+  );
+  
+  return $form;
+}
+
+function fjm_clamor_lecture_ingest_form_validate(&$form, &$form_state) {
+  if (empty($form_state['values']['file'])) {
+    form_set_error('file', t('Needs a file!'));
+  }
+}
+
+function fjm_clamor_lecture_ingest_form_submit(&$form, &$form_state) {
+  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+  
+  $new_pid = Fedora_Item::get_next_PID_in_namespace('atm-test');
+  $parent_pid = $form_state['values']['parent_pid'];
+  $item = Fedora_Item::ingest_new_item($new_pid, 'A', 'Lecture in ' . $parent_pid);
+  $item->add_relationship('hasModel', 'atm:lectureCModel', FEDORA_MODEL_URI);
+  $item->add_relationship('isMemberOf', $parent_pid);
+  $item->add_datastream_from_file($form_state['values']['file']->filepath,
+    'MP3',
+    'MP3 datastream',
+    $form_state['values']['file']->filemime
+  );
+  
+  if (!empty($form_state['values']['description'])) {
+    fjm_clamor_set_dc_description($new_pid, $form_state['values']['description']);
+  }
+}
+
 class ConcertDisplay extends BasicDisplay {
   public static function addTabsStatically($pid, $piece_index = NULL) {
     $tabset = array();
     $i = 0;
     if (user_access('view fedora collection')) {
-      $tabset['sdfgview'] = array(
+      $tabset['view'] = array(
           '#type' => 'tabpage',
           '#title' => t('View'),
           '#content' => theme('fjm_clamor_concert', $pid, $piece_index),
@@ -399,40 +449,16 @@ class ConcertDisplay extends BasicDisplay {
           '#tab_name' => 'performance-ingest',
           '#content' => drupal_get_form('fjm_clamor_performance_ingest_form', $pid),
       );
-    }
-    
-    //Allow addition of Lectures/Conferences to the Concert
-    if (user_access('ingest new fedora objects')) {
       $tabset['lecture-ingest'] = array(
           '#type' => 'tabpage',
           '#title' => t('Add New Lecture'),
-          //'#weight' => $i++,
+          '#weight' => $i++,
           '#tab_name' => 'lecture-ingest',
-          //'#content' => drupal_get_form('fedora_repository_ingest_form', $pid, 'collection', 'atm:lectureCModel'),
+          '#content' => drupal_get_form('fjm_clamor_lecture_ingest_form', $pid),
       );
+      $tabset += self::getImageTab($pid, $i++);
     }
     
     return $tabset;
   }
-  
-  /* TODO:  Finish... Then again, is this even a good idea (instead of the odd theme implementation)?...  Iunno.
-  private function getConcertMarkupArray($piece_index = NULL) {
-    $title = 'get the title';
-    return array(
-      '#type' => 'markup',
-      '#prefix' => '<div class="islandora_fjm_concert">',
-      '#suffix' => '</div>',
-      'title' => array(
-        '#prefix' => '<h3>',
-        '#suffix' => '</h3>',
-        '#value' => $title,
-      ),
-      'top' => array(
-      
-      ),
-      'bottom' => array(
-      
-      ),
-    );
-  }*/
 }

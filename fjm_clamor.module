@@ -20,6 +20,24 @@ function fjm_clamor_menu() {
       'access arguments' => array('ingest new fedora objects'),
       'type' => MENU_CALLBACK,
     ),
+    'fjm_clamor/image_autocomplete' => array(
+      'page callback' => 'fjm_clamor_image_autocomplete',
+      'file' => 'displays/basic-display.inc',
+      'access arguments' => array('edit fedora meta data'),
+      'type' => MENU_CALLBACK,
+    ),
+    'fjm_clamor/image_description' => array(
+      'page callback' => 'fjm_clamor_update_image_description',
+      'file' => 'displays/basic-display.inc',
+      'access arguments' => array('edit fedora meta data'),
+      'type' => MENU_CALLBACK,
+    ),
+    'fjm_clamor/image_addition_change' => array(
+      'page callback' => 'fjm_clamor_image_addition_change',
+      'file' => 'displays/basic-display.inc',
+      'access arguments' => array('edit fedora meta data'),
+      'type' => MENU_CALLBACK,
+    ),
   );
 }
 
@@ -83,6 +101,10 @@ END_QUERY;
         module_load_include('inc', 'fjm_clamor', 'displays/atm-score');
         $to_return += ScoreDisplay::addTabsStatically($pid, $page_number);
         break;
+      case 'atm:performanceCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-performance');
+        $to_return += PerformanceDisplay::addTabsStatically($pid, $page_number);
+        break;
     }
   }
   
@@ -113,12 +135,12 @@ function fjm_clamor_required_fedora_objects() {
             ),
           ),
         ),
-        array(
+        /*array(
           'pid' => 'atm:concertCollection',
           'label' => 'Concert Collection',
           'cmodel' => 'info:fedora/atm:concertCollectionCModel',
           'parent' => 'info:fedora/atm:top',
-        ),
+        ),*/
         array(
           'pid' => 'atm:personCollectionCModel',
           'label' => 'Person Collection Content Model',
@@ -376,6 +398,9 @@ function fjm_clamor_theme() {
         ),
         'template' => 'templates/fjm-clamor-now-playing'
     ),
+    'fjm_clamor_image_manage_table' => array(
+      'file' => 'includes/basic-display.inc',
+    ),
   );
 }
 
@@ -556,7 +581,7 @@ function _fjm_clamor_map_movements($pid, $name, $mp3) {
 
 /**
  * @todo Complete...
- * @param array $vars 
+ * @param &array $vars 
  */
 function template_preprocess_fjm_clamor_concert(&$vars) {
   global $base_url;
@@ -567,7 +592,7 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
   $qp = new IslandoraSolrQueryProcessor();
   
   $qp->solrParams = array(
-    'fl' => array(
+    'fl' => implode(',', array(
       "PID",
       "atm_concert_title_s",
       "atm_concert_cycle_s",
@@ -575,7 +600,7 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
       "atm_concert_description_s",
       "atm_concert_program_pdf_pid_s",
       "atm_concert_program_titn_s",
-    ),
+    )),
   );
   
   $qp->buildAndExecuteQuery("PID:\"$pid\"");
@@ -647,7 +672,9 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
     $performance['rows'] = array(
       array(
         array(
-          'data' => $performance['piece'],
+          'data' => (user_access('edit fedora meta data')?
+            l($performance['piece'], "fedora/repository/{$performance['pid']}"):
+            $performance['piece']),
           'colspan' => '2',
           'class' => 'atm_piecename'
         ),
@@ -740,16 +767,16 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
     $concert['performance_rows'] = array_merge($concert['performance_rows'], $performance['rows']);
   }
   
-  $qp->buildAndExecuteQuery("atm_type_s:\"Archivo de voz\" AND rels_isMemberOf_ms:\"$pid\"",
-    array(
-      'fl'=> implode(',',
-        array(
-          "PID",
-          "atm_lecture_title_s"
-      )),
-      'rows' => '1000'
-    )
+  $qp->solrParams = array(
+    'fl'=> implode(',',
+      array(
+        "PID",
+        "atm_lecture_title_s"
+    )),
+    'rows' => '1000'
   );
+  $qp->buildAndExecuteQuery("atm_type_s:\"Archivo de voz\" AND rels_isMemberOf_ms:\"$pid\"");
+  
   $lectureResults = array();
   if (count($qp->solrResult->response->docs) > 0) {
     $lectureResults = $qp->solrResult->response->docs;
@@ -1097,8 +1124,8 @@ function fjm_clamor_form_fedora_repository_ingest_form_alter(&$form, &$form_stat
 }
 
 function fjm_clamor_form_fedora_repository_edit_qdc_form_alter(&$form, &$form_state) {
-  dsm($form, 'qdc edit form');
-  dsm($form_state, 'qdc edit form state');
+  //dsm($form, 'qdc edit form');
+  //dsm($form_state, 'qdc edit form state');
   
   if ($form['content_model_pid']['#value'] == 'atm:scoreCModel') {
     //Get the composer, and fill in the default value.
@@ -1155,7 +1182,7 @@ function fjm_clamor_person_fix_label(&$form, &$form_state) {
     }
   }
   
-  form_set_value($form['hidden-name'], t('!last, !first', array(
+  form_set_value($form['hidden-name'], t('!first !last', array(
     '!last' => $primary['surname'],
     '!first' => $primary['forename'],
   )), $form_state);

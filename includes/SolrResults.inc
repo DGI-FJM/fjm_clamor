@@ -28,7 +28,7 @@ class SolrResults extends IslandoraSolrResults {
       // Initialize drupal-style pager
       islandora_solr_search_pager_init($total, $solrQueryProcessor->solrLimit);
 
-      $output .= $this->addSecondaries();
+      $output .= $this->addSecondaries($solrQueryProcessor);
 
       $field = 'atm_type_ms';
       $map = array(

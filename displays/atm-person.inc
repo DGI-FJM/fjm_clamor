@@ -16,6 +16,10 @@ class PersonDisplay extends BasicDisplay {
         '#content' => theme('fjm_clamor_person', $pid, $page),
       );
     }
+    
+    if (user_access('ingest new fedora objects')) {
+      $tabset += self::getImageTab($pid);
+    }
   
     return $tabset;
   }
