@@ -10,7 +10,9 @@ drupal_set_title(t('Scores'));
 <div class="islandora_fjm_score">
   <h2><?php echo $title ?></h2>
   <h3><?php echo $composer ?></h3>
-  <?php echo theme('fjm_clamor_flexpaper', $pid) ?>
+  <?php if ($doc->atm_score_pdf_b):
+    echo theme('fjm_clamor_flexpaper', $pid);
+  endif; ?>
   <div class="islandora_fjm_description">
   <?php if(!empty($abstract)): ?>
       <h4><?php echo t("Abstract") ?></h4>
@@ -26,7 +28,9 @@ drupal_set_title(t('Scores'));
   endif;
   ?>
   </div>
+  <?php if ($doc->atm_score_pdf_b):?>
   <div class="pdf">
       <?php echo l(t('Download PDF'), "fedora/repository/$pid/PDF/download/" . t("Score for !title.pdf", array('!title' => $title))) ?>
   </div>
+  <?php endif; ?>
 </div>

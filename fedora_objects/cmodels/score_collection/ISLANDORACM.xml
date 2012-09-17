@@ -1,8 +1,7 @@
 <content_model xmlns="http://www.islandora.ca" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.islandora.ca http://localhost/islandoracm.xsd"
-  name="concertCModel"
-  version="2">
+  name="scoreCollectionCModel"
+  version="1">
   <mimetypes></mimetypes>
-  <datastreams>
-    <datastream dsid="MODS"/>
-  </datastreams>
+  <ingest_rules></ingest_rules>
+  <datastreams/>
 </content_model>

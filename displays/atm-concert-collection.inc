@@ -55,8 +55,6 @@ END_QUERY;
     
     $results = ObjectHelper::performSparqlQuery(self::getCollectionQuery($pid));
     
-    //dsm($collection_query, 'collection query');
-    //dsm($results, 'results');
     return array(
         '#type' => 'tabpage',
         '#title' => t('View'),
@@ -83,21 +81,9 @@ END_QUERY;
       $tabset['view'] = self::getCollectionTab($pid);
     }
     
-    //Allow editing of the Collection-level (really, there's just the title) Metadata
-    if (user_access('edit fedora meta data')) {
-      //$form = drupal_get_form('fedora_repository_edit_qdc_form', $pid, 'DC');
-    
-      $tabset['edit-metadata'] = array(
-          '#type' => 'tabpage',
-          '#title' => t('Edit Metadata'),
-          '#content' => $form,
-          '#tab_name' => 'edit-metadata'
-      );
-    }
-    
     //Allow addition of Concerts to the collection.
     if (user_access('ingest new fedora objects')) {
-      //$form = drupal_get_form('fedora_repository_ingest_form', $pid);
+      $form = drupal_get_form('fedora_repository_ingest_form', $pid, self::get_title($pid), 'atm:concertCModel');
     
       $tabset['ingest-concert'] = array(
           '#type' => 'tabpage',
@@ -109,27 +95,5 @@ END_QUERY;
     
     return $tabset;
   }
-  
-  
-  
-  /* TODO:  Finish... Then again, is this even a good idea (instead of the odd theme implementation)?...  Iunno.
-  private function getConcertMarkupArray($piece_index = NULL) {
-    $title = 'get the title';
-    return array(
-      '#type' => 'markup',
-      '#prefix' => '<div class="islandora_fjm_concert">',
-      '#suffix' => '</div>',
-      'title' => array(
-        '#prefix' => '<h3>',
-        '#suffix' => '</h3>',
-        '#value' => $title,
-      ),
-      'top' => array(
-      
-      ),
-      'bottom' => array(
-      
-      ),
-    );
-  }*/
+
 }
