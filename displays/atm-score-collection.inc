@@ -70,7 +70,6 @@ END_QUERY;
         '#content' => drupal_get_form('fedora_repository_ingest_form', $pid, self::get_title($pid), 'atm:scoreCModel'),
       );
     }
-    
     return $tabset;
   }
 }

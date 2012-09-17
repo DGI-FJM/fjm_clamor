@@ -379,22 +379,32 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
 
 function fjm_clamor_lecture_ingest_form(&$form_state, $pid = NULL) {
   $form = array(
+    '#tree' => FALSE,
     'parent_pid' => array(
       '#type' => 'value',
       '#value' => $pid,
     ),
     'file' => array(
+      '#tree' => FALSE,
       '#type' => 'upload_element',
+      '#required' => TRUE,
       '#title' => t('Audio file'),
+      '#file_validators' => array(
+        'fjm_clamor_file_is_mime' => array('audio/mpeg'),
+      ),
     ),
     'description' => array(
       '#type' => 'textarea',
       '#title' => t('Description'),
       '#description' => t('A short description of the lecture.'),
+      '#required' => TRUE,
     ),
     'submit' => array(
       '#type' => 'submit',
       '#value' => t('Submit'),
+    ),
+    '#attributes' => array(
+      'enctype' => 'multipart/form-data',
     ),
   );
   
@@ -402,9 +412,6 @@ function fjm_clamor_lecture_ingest_form(&$form_state, $pid = NULL) {
 }
 
 function fjm_clamor_lecture_ingest_form_validate(&$form, &$form_state) {
-  if (empty($form_state['values']['file'])) {
-    form_set_error('file', t('Needs a file!'));
-  }
 }
 
 function fjm_clamor_lecture_ingest_form_submit(&$form, &$form_state) {
@@ -456,9 +463,40 @@ class ConcertDisplay extends BasicDisplay {
           '#tab_name' => 'lecture-ingest',
           '#content' => drupal_get_form('fjm_clamor_lecture_ingest_form', $pid),
       );
+      $tabset['program-info'] = self::get_program_tab($pid);
+      $tabset['program-info']['#weight'] = $i++;
       $tabset += self::getImageTab($pid, $i++);
     }
     
     return $tabset;
+  }
+  
+  private static function get_program_tab($pid) {
+    $program_exists = self::get_program($pid);
+    return array(
+      '#type' => 'tabpage',
+      '#title' => ($program_exists?
+        t('Program Info'):
+        t('Add Program')),
+
+      '#tab_name' => 'program-info',
+      '#content' => ($program_exists?
+        FALSE:
+        drupal_get_form('fedora_repository_ingest_form', $pid, self::get_title($pid), 'atm:programCModel')),
+    );
+  }
+  
+  private static function get_program($pid) {
+      module_load_include('inc', 'fedora_repository', 'ObjectHelper');
+      $results = ObjectHelper::performSparqlQuery(<<<EOQ
+SELECT ?obj {
+  ?obj <fedora-rels-ext:isMemberOf> <info:fedora/$pid> ;
+       <fedora-model:state> <fedora-model:Active> ;
+       <fedora-model:hasModel> <info:fedora/atm:programCModel> .
+}
+EOQ
+      );
+
+      return $results[0]['obj'];
   }
 }

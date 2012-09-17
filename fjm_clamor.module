@@ -38,6 +38,12 @@ function fjm_clamor_menu() {
       'access arguments' => array('edit fedora meta data'),
       'type' => MENU_CALLBACK,
     ),
+    'fjm_clamor/performer' => array(
+      'page callback' => 'fjm_clamor_performer_item_autocomplete',
+      'file' => 'displays/atm-performance.inc',
+      'access arguments' => array('ingest new fedora objects'),
+      'type' => MENU_CALLBACK,
+    ),
   );
 }
 
@@ -62,10 +68,11 @@ SELECT ?model
 WHERE {
   <info:fedora/$pid> fm:hasModel ?model ;
                      fm:state fm:Active .
+  ?model fm:state fm:Active .
 }
 END_QUERY;
   $all_cmodels = ObjectHelper::performSparqlQuery($model_query);
-
+  
   foreach ($all_cmodels as $cmodel) {
     $cm_pid = $cmodel['model'];
     switch($cm_pid) {
@@ -105,9 +112,24 @@ END_QUERY;
         module_load_include('inc', 'fjm_clamor', 'displays/atm-performance');
         $to_return += PerformanceDisplay::addTabsStatically($pid, $page_number);
         break;
+      case 'atm:instrumentCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-instrument');
+        break;
+      case 'atm:ic-collectionCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-ic-collection');
+        $to_return += InstrumentClassCollectionDisplay::addTabsStatically($pid, $page_number);
+        break;
+      case 'atm:instrumentClassCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-instrument-class');
+        $to_return += InstrumentClassDisplay::addTabsStatically($pid, $page_number);
+        break;
+      case 'atm:groupCollectionCModel':
+        module_load_include('inc', 'fjm_clamor', 'displays/atm-group-collection');
+        $to_return += GroupCollectionDisplay::addTabsStatically($pid, $page_number);
+        break;
     }
   }
-  
+  //dsm($to_return, 'clamor tabs');
   return $to_return;
 }
 
@@ -122,7 +144,7 @@ function fjm_clamor_required_fedora_objects() {
       'title' => t('Clamor Fedora Objects'),
       'objects' => array(
         array(
-          'pid' => 'atm:concertCollectionCModel',
+          'pid' => 'atm:concertCycleCModel',
           'label' => 'Concert Collection Content Model',
           'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
           'parent' => 'info:fedora/islandora:ContentModelsCollection',
@@ -135,12 +157,33 @@ function fjm_clamor_required_fedora_objects() {
             ),
           ),
         ),
-        /*array(
-          'pid' => 'atm:concertCollection',
-          'label' => 'Concert Collection',
-          'cmodel' => 'info:fedora/atm:concertCollectionCModel',
+        array(
+          'pid' => 'atm:cycleCollectionCModel',
+          'label' => 'Cycle Collection Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/cycle_collection/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
+        ),
+        array(
+          'pid' => 'atm:cycleCollection',
+          'label' => 'Concert Cycle Collection',
+          'cmodel' => 'info:fedora/atm:cycleCollectionCModel',
           'parent' => 'info:fedora/atm:top',
-        ),*/
+          'datastreams' => array(
+            array(
+              'dsid' => 'TN',
+              'label' => 'Image',
+              'datastream_file' => "./$mod_path/images/concert_cycle.png",
+            ),
+          ),
+        ),
         array(
           'pid' => 'atm:personCollectionCModel',
           'label' => 'Person Collection Content Model',
@@ -160,6 +203,40 @@ function fjm_clamor_required_fedora_objects() {
           'label' => 'Person Collection',
           'cmodel' => 'info:fedora/atm:personCollectionCModel',
           'parent' => 'info:fedora/atm:top',
+          'datastreams' => array(
+            array(
+              'dsid' => 'TN',
+              'label' => 'Image',
+              'datastream_file' => "./$mod_path/images/person_collection.png",
+            ),
+          ),
+        ),
+        array(
+          'pid' => 'atm:scoreCollectionCModel',
+          'label' => 'Score Collection Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/score_collection/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
+        ),
+        array(
+          'pid' => 'atm:scoreCollection',
+          'label' => 'Score Collection',
+          'cmodel' => 'info:fedora/atm:scoreCollectionCModel',
+          'parent' => 'info:fedora/atm:top',
+          'datastreams' => array(
+            array(
+              'dsid' => 'TN',
+              'label' => 'Image',
+              'datastream_file' => "./$mod_path/images/score_collection.png",
+            ),
+          ),
         ),
         array(
           'pid' => 'atm:concertCModel',
@@ -180,6 +257,14 @@ function fjm_clamor_required_fedora_objects() {
           'label' => 'Group Content Model',
           'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
           'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/group/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
         ),
         array(
           'pid' => 'atm:imageCModel',
@@ -192,12 +277,28 @@ function fjm_clamor_required_fedora_objects() {
           'label' => 'Instrument Content Model',
           'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
           'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/instrument/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
         ),
         array(
           'pid' => 'atm:instrumentClassCModel',
           'label' => 'Instrument Class Content Model',
           'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
           'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/instrument_class/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
         ),
         array(
           'pid' => 'atm:lectureCModel',
@@ -256,6 +357,60 @@ function fjm_clamor_required_fedora_objects() {
               'label' => 'Islandora content model',
               'datastream_file' => "./$mod_path/cmodels/score/ISLANDORACM.xml",
               'dsversion' => TRUE,
+            ),
+          ),
+        ),
+        array(
+          'pid' => 'atm:ic-collectionCModel',
+          'label' => 'Instrument Class Collection Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/ic_collection/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
+        ),
+        array(
+          'pid' => 'atm:instrumentClassCollection',
+          'label' => 'Instrument Class Collection',
+          'cmodel' => 'info:fedora/atm:ic-collectionCModel',
+          'parent' => 'info:fedora/atm:top',
+          'datastreams' => array(
+            array(
+              'dsid' => 'TN',
+              'label' => 'Image',
+              'datastream_file' => "./$mod_path/images/instrument_collection.png",
+            ),
+          ),
+        ),
+        array(
+          'pid' => 'atm:groupCollectionCModel',
+          'label' => 'Group Collection Content Model',
+          'cmodel' => 'info:fedora/fedora-system:ContentModel-3.0',
+          'parent' => 'info:fedora/islandora:ContentModelsCollection',
+          'datastreams' => array(
+            array(
+              'dsid' => 'ISLANDORACM',
+              'label' => 'Islandora content model',
+              'datastream_file' => "./$mod_path/cmodels/group_collection_model/ISLANDORACM.xml",
+              'dsversion' => TRUE,
+            ),
+          ),
+        ),
+        array(
+          'pid' => 'atm:groupCollection',
+          'label' => 'Group Collection',
+          'cmodel' => 'info:fedora/atm:groupCollectionCModel',
+          'parent' => 'info:fedora/atm:top',
+          'datastreams' => array(
+            array(
+              'dsid' => 'TN',
+              'label' => 'Image',
+              'datastream_file' => "./$mod_path/images/group_collection.png",
             ),
           ),
         ),
@@ -699,7 +854,7 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
             ($performance['mp3stat'])?
             ('
                 <div class="atm_track concertOrder_' . $performance['order'] . '">
-                    <a onClick="Drupal.settings.islandora_fjm.play(&quot;piece&quot;, ' . count($js_data['islandora_fjm']['piece']) . ', 0);"><!-- placeholder --></a>
+                    <a href="#flowplayer" onClick="Drupal.settings.islandora_fjm.play(&quot;piece&quot;, ' . count($js_data['islandora_fjm']['piece']) . ', 0);"><!-- placeholder --></a>
                 </div>'):
             ('  <!-- MP3 is probably in movements -->')
           )
@@ -723,7 +878,7 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
             (!$performance['mp3stat'] && $movement['hasMP3'] === 'true')?
             ('
                 <div class="atm_track concertOrder_' . $performance['order'] . '">
-                  <a onClick="Drupal.settings.islandora_fjm.play(&quot;piece&quot;, ' . count($js_data['islandora_fjm']['piece']) . ', ' . $key . ');"><!-- placeholder --></a>
+                  <a href="#flowplayer" onClick="Drupal.settings.islandora_fjm.play(&quot;piece&quot;, ' . count($js_data['islandora_fjm']['piece']) . ', ' . $key . ');"><!-- placeholder --></a>
                 </div>
             '):
             ("<!-- MP3 in performance, or none -->")
@@ -799,11 +954,13 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
           )
       );
       $lecture['row'] = array(
-          $lecture['description'],
+          user_access('edit fedora meta data')?
+            l($lecture['description'], "fedora/repository/{$lecture['pid']}"):
+            $lecture['description'],
           array(
               'data' => '
                   <div class="atm_track">
-                    <a onClick="Drupal.settings.islandora_fjm.play(&quot;lecture&quot;, ' . count($js_data['islandora_fjm']['lecture']) . ', 0);"><!-- placeholder --></a>
+                    <a href="#flowplayer" onClick="Drupal.settings.islandora_fjm.play(&quot;lecture&quot;, ' . count($js_data['islandora_fjm']['lecture']) . ', 0);"><!-- placeholder --></a>
                   </div>
               ',
               'style' => 'float:right;'
@@ -867,19 +1024,15 @@ function template_preprocess_fjm_clamor_score(&$vars) {
   $pid = $vars['pid'];
   
   $qp->solrParams = array(
-    'fl' => 'atm_score_title_s,atm_score_pdf_b,atm_score_composer_s,atm_score_titn_s',
+    'fl' => 'atm_score_title_es,atm_score_pdf_b,atm_score_composer_es,atm_score_titn_s',
   );
   $qp->buildAndExecuteQuery("PID:\"$pid\"");
-  
-  $base = drupal_get_path("module", "islandora_fjm");
-  $output = '';
 
   if (!empty($qp->solrResult->response->docs)) {
     $vars['doc'] = $score_result = $qp->solrResult->response->docs[0];
-    dsm($score_result);
     
-    $vars['title'] =  $score_result->atm_score_title_s;
-    $vars['composer'] = $score_result->atm_score_composer_s;
+    $vars['title'] =  $score_result->atm_score_title_es;
+    $vars['composer'] = $score_result->atm_score_composer_es;
   
     //FIXME:  This could at least use absolute being passed to the url function or something...
     module_load_include('inc', 'fedora_repository', 'api/fedora_item');
@@ -1105,21 +1258,72 @@ function fjm_clamor_islandora_content_model_forms_get_transforms() {
 }
 
 function fjm_clamor_form_fedora_repository_ingest_form_alter(&$form, &$form_state) {
+  $pid_namespace = 'atm-test';
+  //dsm($form_state, 'fs');
+  if ($form_state['storage']['collection_pid'] == 'atm:personCollection') {
+    $form['#action'] = url('fedora/repository/' . $form_state['storage']['collection_pid'], array(
+      'fragment' => 'add-person',
+    ));
+  }
+  elseif ($form_state['storage']['collection_pid'] == 'atm:groupCollection') {
+    $form['#action'] = url('fedora/repository/' . $form_state['storage']['collection_pid'], array(
+      'fragment' => 'add-instrument',
+    ));
+  }
+  elseif ($form_state['storage']['collection_pid'] == 'atm:groupCollection') {
+    $form['#action'] = url('fedora/repository/' . $form_state['storage']['collection_pid'], array(
+      'fragment' => 'add-group',
+    ));
+  }
+  elseif ($form_state['storage']['collection_pid'] == 'atm:instrumentClassCollection') {
+    $form['#action'] = url('fedora/repository/' . $form_state['storage']['collection_pid'], array(
+      'fragment' => 'add-instrument-class',
+    ));
+  }
+  
   if ($form_state['storage']['content_model'] == 'atm:concertCModel') {
-    $form_state['storage']['pid_namespace'] = 'atm-test';
+    $form_state['storage']['pid_namespace'] = $pid_namespace;
     $form_state['storage']['parent_relation'] = 'isMemberOf';
+    $form['#action'] = url('fedora/repository/' . $form_state['storage']['collection_pid'], array(
+      'fragment' => 'ingest-concert',
+    ));
   }
   elseif ($form_state['storage']['content_model'] == 'atm:personCModel') {
-    $form_state['storage']['pid_namespace'] = 'atm-test';
+    $form_state['storage']['pid_namespace'] = $pid_namespace;
     $form_state['storage']['parent_relation'] = 'isMemberOfCollection';
     array_unshift($form['#submit'], 'fjm_clamor_person_fix_label');
   }
   elseif ($form_state['storage']['content_model'] == 'atm:scoreCModel') {
-    $form_state['storage']['pid_namespace'] = 'atm-test';
+    $form_state['storage']['pid_namespace'] = $pid_namespace;
     $form_state['storage']['parent_relation'] = 'isMemberOfCollection';
     $form['#submit'][] = 'fjm_clamor_score_submit_add_composer_relation';
-    $form['pdf']['#type']['#tree'] = FALSE;
+    if ($form['pdf']['#type'] == 'upload_element') {
+      $form['pdf']['#tree'] = FALSE;
+    }
     $form['#submit'][] = 'fjm_clamor_score_add_pdf';
+    $form['composer']['#element_validate'][] = 'fjm_clamor_valid_pid';
+    $form['#action'] = url('fedora/repository/' . $form_state['storage']['collection_pid'], array(
+      'fragment' => 'add-score',
+    ));
+  }
+  elseif ($form_state['storage']['content_model'] == 'atm:programCModel') {
+    $form_state['storage']['pid_namespace'] = $pid_namespace;
+    $form_state['storage']['parent_relation'] = 'isMemberOf';
+    $form['#action'] = url('fedora/repository/' . $form_state['storage']['collection_pid'], array(
+      'fragment' => 'program-info',
+    ));
+  }
+  elseif ($form_state['storage']['content_model'] == 'atm:instrumentClassCModel') {
+    $form_state['storage']['pid_namespace'] = $pid_namespace;
+    $form_state['storage']['parent_relation'] = 'isMemberOfCollection';
+  }
+  elseif ($form_state['storage']['content_model'] == 'atm:instrumentCModel') {
+    $form_state['storage']['pid_namespace'] = $pid_namespace;
+    $form_state['storage']['parent_relation'] = 'isMemberOf';
+  }
+  elseif ($form_state['storage']['content_model'] == 'atm:groupCModel') {
+    $form_state['storage']['pid_namespace'] = $pid_namespace;
+    $form_state['storage']['parent_relation'] = 'isMemberOfCollection';
   }
 }
 
@@ -1131,11 +1335,11 @@ function fjm_clamor_form_fedora_repository_edit_qdc_form_alter(&$form, &$form_st
     //Get the composer, and fill in the default value.
     if (empty($form['composer']['#default_value'])) {
       module_load_include('inc', 'fedora_repository', 'ObjectHelper');
-      $pid = 
+      $pid = $form['pid']['#value'];
       $q = <<<EOQ
 PREFIX atm-rel: <http://digital.march.es/atmusica#>
-FROM <#ri>
 SELECT ?composer
+FROM <#ri>
 WHERE {
   <info:fedora/$pid> atm-rel:composedBy ?composer .
 }
@@ -1154,8 +1358,9 @@ EOQ;
     //Add in the submit handler to recreate the relation.
     $form['#submit'][] = 'fjm_clamor_score_submit_add_composer_relation';
     
-    $form['pdf']['#type']['#tree'] = FALSE;
-    $form['pdf']['#description'] = t('This will replace any PDF currently existing on this object.');
+    $form['pdf']['#tree'] = FALSE;
+    $form['pdf']['#description'] = t('This will replace any PDF currently existing on this object.  ' . 
+      'Check the list of datastream for whether or not we already have one.');
     $form['#submit'][] = 'fjm_clamor_score_add_pdf';
   }
   elseif ($form['content_model_pid']['#value'] == 'atm:personCModel') {
@@ -1196,12 +1401,16 @@ function fjm_clamor_score_submit_add_composer_relation(&$form, &$form_state) {
   $composed = $form_state['values']['pid'];
   $item = new Fedora_Item($composed);
 
-  if (isset($form_state['values']['initial_composer']) && $form_state['values']['initial_composer'] != $form_state['values'][composer]) {
-    $item->purge_relationships('composedBy', NULL, 'http://digital.march.es/atmusica#');
+  if (isset($form_state['values']['initial_composer']) && 
+    $form_state['values']['initial_composer'] != $form_state['values']['composer']) {
+      $item->purge_relationships('composedBy', NULL, 'http://digital.march.es/atmusica#');
   }
   
-  //and add the author relationship.
-  $item->add_relationship('composedBy', $form_state['values']['composer'], 'http://digital.march.es/atmusica#');
+  if (empty($form_state['values']['initial_composer']) ||
+    ($form_state['values']['initial_composer'] != $form_state['values']['composer'])) {
+    //and add the author relationship.
+    $item->add_relationship('composedBy', $form_state['values']['composer'], 'http://digital.march.es/atmusica#');
+  }
 }
 
 function fjm_clamor_score_add_pdf(&$form, &$form_state) {
@@ -1217,5 +1426,34 @@ function fjm_clamor_score_add_pdf(&$form, &$form_state) {
     else {
       $item->add_datastream_from_file($pdf->filepath, 'PDF', 'PDF datastream', 'application/pdf');
     }
+  }
+}
+
+function fjm_clamor_file_is_mime(&$file, $mime) {
+  $errors = array();
+  if ($file->filemime != $mime) {
+    $errors[] = t('File must be of the MIMEtype %mime.', array(
+      '%mime' => $mime,
+    ));
+  }
+  return $errors;
+}
+
+function fjm_clamor_model_test($pid, $model) {
+  module_load_include('inc', 'fedora_repository', 'ObjectHelper');
+  $results = ObjectHelper::performSparqlQuery(<<<EOQ
+ASK {
+  <info:fedora/$pid> <fedora-model:hasModel> <info:fedora/$model> .
+}
+EOQ
+  );
+
+  return $results[0]['k0'] == 'true';
+}
+
+function fjm_clamor_valid_pid($element, &$form_state) {
+  module_load_include('inc', 'fedora_repository', 'api/fedora_utils');
+  if ($form_state['storage']['step'] > 1 && !valid_pid($element['#value'])) {
+    form_error($element, t('Needs to be a valid PID!'));
   }
 }

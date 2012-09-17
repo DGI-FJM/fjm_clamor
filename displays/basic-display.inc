@@ -38,6 +38,18 @@ abstract class BasicDisplay {
       ),
     );
   }
+  
+  protected function model_test($pid, $model) {
+    module_load_include('inc', 'fedora_repository', 'ObjectHelper');
+    $results = ObjectHelper::performSparqlQuery(<<<EOQ
+ASK {
+  <info:fedora/$pid> <fedora-model:hasModel> <info:fedora/$model> .
+}
+EOQ
+    );
+  
+    return $results['k0'] == 'true';
+  }
 }
 
 function fjm_clamor_image_set_form(&$form_state, $pid) {
@@ -45,8 +57,12 @@ function fjm_clamor_image_set_form(&$form_state, $pid) {
   Ahah::get_ahah_js();
   
   $form = array(
+    '#cache' => FALSE,
     '#tree' => TRUE,
     '#action' => '#manage-images',
+    '#attributes' => array(
+      'enctype' => 'multipart/form-data',
+    ),
     'pid' => array(
       '#type' => 'value',
       '#value' => $pid,
@@ -133,7 +149,8 @@ function fjm_clamor_image_set_form(&$form_state, $pid) {
       ),
     ),
   );
-  
+
+  //sleep(3); //XXX: Seems like the query doesn't consistently get the changes
   module_load_include('inc', 'fedora_repository', 'ObjectHelper');
   $results = ObjectHelper::performSparqlQuery(<<<EOQ
 PREFIX fm: <info:fedora/fedora-system:def/model#>
@@ -207,22 +224,25 @@ EOQ
 
 
 function fjm_clamor_image_set_form_validate($form, &$form_state) {
-  module_load_include('inc', 'fedora_repository', 'api/fedora_utils');
-  
+  module_load_include('inc', 'fedora_repository', 'api/fedora_util');
   if ($form_state['clicked_button']['#name'] == 'create_link' && 
-    (empty($form_state['values']['add_existing']['to_link']) ||
-    valid_pid($form_state['values']['add_existing']['to_link']))) {
-    form_set_error(implode($form['add_existing']['to_link']['#parents'], ']['), t('Need to specify a valid PID!'));
+    (empty($form_state['values']['add']['add_existing']['to_link']) ||
+    valid_pid($form_state['values']['add']['add_existing']['to_link']))) {
+    form_set_error(implode($form['add']['add_existing']['to_link']['#parents'], ']['), t('Need to specify a valid PID!'));
   }
   elseif ($form_state['clicked_button']['#name'] == 'create_new' &&
     empty($form_state['values']['file'])) {
-    form_set_error(implode($form['add_new']['file']['#parents'], ']['), t('Need to give an image file!'));
+    form_set_error(implode($form['add']['add_new']['file']['#parents'], ']['), t('Need to give an image file!'));
   }
 }
 
 function fjm_clamor_image_set_form_submit(&$form, &$form_state) {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
   module_load_include('inc', 'fedora_repository', 'ObjectHelper');
+  
+  if ($form_state['clicked_button']['#name'] == 'file-upload-element') {
+    $form['#redirect'] = FALSE;
+  }
   
   $pid = $form_state['values']['pid'];
   $atm_rel = 'http://digital.march.es/atmusica#';
@@ -245,11 +265,14 @@ function fjm_clamor_image_set_form_submit(&$form, &$form_state) {
       fjm_clamor_set_dc_description($img->pid, $desc);
     }
     
+    $img->add_relationship('hasModel', 'atm:imageCModel', FEDORA_MODEL_URI);
     $img->add_datastream_from_file($form_state['values']['file']->filepath,
       'JPG',
       'Object image',
       $form_state['values']['file']->filemime);
-    $img->add_relationship('hasModel', 'atm:imageCModel', FEDORA_MODEL_URI);
+
+    $form['file']['#value'] = NULL;
+    sleep(3);
   }
   elseif (strpos($form_state['clicked_button']['#name'], 'iconify') === 0) {
     $img = new Fedora_Item($form_state['clicked_button']['#attributes']['pid']);
@@ -285,6 +308,7 @@ EOQ
         $img->add_relationship('isIconOf', $pid, $atm_rel);
       }
     }
+    
   }
 }
 

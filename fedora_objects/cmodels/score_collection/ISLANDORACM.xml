@@ -1,0 +1,7 @@
+<content_model xmlns="http://www.islandora.ca" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.islandora.ca http://localhost/islandoracm.xsd"
+  name="scoreCollectionCModel"
+  version="1">
+  <mimetypes></mimetypes>
+  <ingest_rules></ingest_rules>
+  <datastreams/>
+</content_model>

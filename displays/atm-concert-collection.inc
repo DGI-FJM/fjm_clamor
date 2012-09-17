@@ -95,27 +95,5 @@ END_QUERY;
     
     return $tabset;
   }
-  
-  
-  
-  /* TODO:  Finish... Then again, is this even a good idea (instead of the odd theme implementation)?...  Iunno.
-  private function getConcertMarkupArray($piece_index = NULL) {
-    $title = 'get the title';
-    return array(
-      '#type' => 'markup',
-      '#prefix' => '<div class="islandora_fjm_concert">',
-      '#suffix' => '</div>',
-      'title' => array(
-        '#prefix' => '<h3>',
-        '#suffix' => '</h3>',
-        '#value' => $title,
-      ),
-      'top' => array(
-      
-      ),
-      'bottom' => array(
-      
-      ),
-    );
-  }*/
+
 }

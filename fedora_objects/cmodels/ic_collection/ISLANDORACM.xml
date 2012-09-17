@@ -1,0 +1,8 @@
+<content_model xmlns="http://www.islandora.ca" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.islandora.ca http://localhost/islandoracm.xsd"
+  name="instrumentClassCollectionCModel"
+  version="1">
+  <mimetypes></mimetypes>
+  <datastreams>
+    <datastream dsid="DC"/>
+  </datastreams>
+</content_model>
