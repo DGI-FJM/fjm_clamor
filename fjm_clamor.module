@@ -134,10 +134,115 @@ END_QUERY;
 }
 
 /**
+ * Implementation of hook_islandora_content_model_forms_associations().
+ * 
+ * XXX:  At the time of writing, this hook doesn't actually exists...  This
+ *   function is called in this file.
+ */
+function fjm_clamor_islandora_content_model_forms_associations() {
+  $mod_path = drupal_get_path('module', 'fjm_clamor');
+  $icmf_path = drupal_get_path('module', 'islandora_content_model_forms');
+  return array(
+    'fjm_clamor' => array(
+      'Concert MODS' => array(
+        'dsid' => 'MODS',
+        'file' => "$mod_path/form_definitions/concert_form.xml",
+        'title_field' => "['ti']['title']",
+        'cmodels' => array(
+          'atm:concertCModel',
+        ),
+        'transform' => "$icmf_path/transforms/mods_to_dc.xsl",
+      ),
+      'Program MODS' => array(
+        'dsid' => 'MODS',
+        'file' => "$mod_path/form_definitions/program_form.xml",
+        'title_field' => "['title_info']['title']",
+        'cmodels' => array(
+          'atm:programCModel',
+        ),
+        'transform' => "$icmf_path/transforms/mods_to_dc.xsl",
+      ),
+      'Score MODS' => array(
+        'dsid' => 'MODS',
+        'file' => "$mod_path/form_definitions/score_form.xml",
+        'title_field' => "['title_info']['title']",
+        'cmodels' => array(
+          'atm:scoreCModel',
+        ),
+        'transform' => "$icmf_path/transforms/mods_to_dc.xsl",
+      ),
+      'Instrument Class DC' => array(
+        'dsid' => 'DC',
+        'file' => "$mod_path/form_definitions/instrument_class_form.xml",
+        'title_field' => "['title']",
+        'cmodels' => array(
+          'atm:instrumentClassCModel',
+        ),
+        'transform' => "$mod_path/xslt/copy_first_dc.xslt",
+      ),
+      'Instrument DC' => array(
+        'dsid' => 'DC',
+        'file' => "$mod_path/form_definitions/instrument_form.xml",
+        'title_field' => "['title']",
+        'cmodels' => array(
+          'atm:instrumentCModel',
+        ),
+        'transform' => "$mod_path/xslt/copy_first_dc.xslt",
+      ),
+      'Group DC' => array(
+        'dsid' => 'DC',
+        'file' => "$mod_path/form_definitions/group_form.xml",
+        'title_field' => "['title']",
+        'cmodels' => array(
+          'atm:groupCModel',
+        ),
+        'transform' => "$mod_path/xslt/copy_first_dc.xslt",
+      ),
+      'Personal EAC-CPF' => array(
+        'dsid' => 'EAC-CPF',
+        'file' => "$mod_path/form_definitions/person_form.xml",
+        'title_field' => "['hidden-name']",
+        'cmodels' => array(
+          'atm:personCModel',
+        ),
+        'transform' => "$icmf_path/transforms/eaccpf_to_dc.xsl",
+      ),
+    ),
+  );
+}
+
+
+/**
  * Implementation of hook_required_fedora_objects().
  */
 function fjm_clamor_required_fedora_objects() {
   $mod_path = drupal_get_path('module', 'fjm_clamor') . '/fedora_objects';
+  
+  $forms = fjm_clamor_islandora_content_model_forms_associations();
+  module_load_include('inc', 'xml_form_builder', 'XMLFormDatabase');
+  $forms = $forms['fjm_clamor'];
+  foreach($forms as $name => $info) {
+    if (!XMLFormDatabase::Valid($name)) { 
+      $def = new DOMDocument();
+      $def->load($info['file']);
+      if (XMLFormDatabase::Exists($name)) {
+        XMLFormDatabase::Upgrade($name, $def);
+      }
+      else {
+        XMLFormDatabase::Create($name, $def);
+      }
+    }
+    
+    foreach($info['cmodels'] as $cmodel) {
+      if (!islandora_content_model_association_exists($cmodel, $name)) {
+        islandora_content_model_forms_add_association($cmodel, $name,
+          $info['dsid'], $info['title_field'], $info['transform'], 
+          (isset($info['template'])? $info['template']: '')
+        );
+      }
+    }
+  }
+  
   return array(
     'fjm_clamor' => array(
       'module' => 'fjm_clamor',
@@ -1084,14 +1189,19 @@ function template_preprocess_fjm_clamor_program(&$vars) {
     $modsUrl = url("fedora/repository/$pid/MODS", array(
       'absolute' => TRUE
     ));
-    $mods = DOMDocument::loadXML(do_curl($modsUrl));
-    if ($mods) {
+    module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+    $item = new Fedora_Item($pid);
+    $mods_str = trim($item->get_datastream_dissemination('MODS'));
+    if ($mods_str && ($mods = DOMDocument::loadXML($mods_str))) {
       $vars['toc'] = $mods->getElementsByTagName('tableOfContents')->item(0)->nodeValue;
       $vars['notes'] = array();
 
       foreach ($mods->getElementsByTagName('note') as $node) {
           $vars['notes'][] = $node->nodeValue;
       }
+    }
+    else {
+      drupal_set_message(t('Failed to load MODS for this item; some information may be missing.'), 'warning');
     }
 }
 
@@ -1265,7 +1375,7 @@ function fjm_clamor_form_fedora_repository_ingest_form_alter(&$form, &$form_stat
       'fragment' => 'add-person',
     ));
   }
-  elseif ($form_state['storage']['collection_pid'] == 'atm:groupCollection') {
+  elseif ($form_state['storage']['collection_pid'] == 'atm:instrumentCollection') {
     $form['#action'] = url('fedora/repository/' . $form_state['storage']['collection_pid'], array(
       'fragment' => 'add-instrument',
     ));
@@ -1320,6 +1430,9 @@ function fjm_clamor_form_fedora_repository_ingest_form_alter(&$form, &$form_stat
   elseif ($form_state['storage']['content_model'] == 'atm:instrumentCModel') {
     $form_state['storage']['pid_namespace'] = $pid_namespace;
     $form_state['storage']['parent_relation'] = 'isMemberOf';
+    $form['#action'] = url('fedora/repository/' . $form_state['storage']['collection_pid'], array(
+      'fragment' => 'add-instrument',
+    ));
   }
   elseif ($form_state['storage']['content_model'] == 'atm:groupCModel') {
     $form_state['storage']['pid_namespace'] = $pid_namespace;
