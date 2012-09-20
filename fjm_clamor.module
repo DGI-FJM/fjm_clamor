@@ -802,8 +802,8 @@ function template_preprocess_fjm_clamor_solr_result(&$vars) {
     break;
     case "Score":
     case "Partituras":
-            $toReturn['composer'] = l($result->atm_score_composer_s, "fedora/repository/$result->atm_score_composer_pid_s");
-            $toReturn['title'] = $result->atm_score_title_s;
+            $toReturn['composer'] = l($result->atm_score_composer_es, "fedora/repository/$result->atm_score_composer_pid_s");
+            $toReturn['title'] = $result->atm_score_title_es;
             $toReturn['titn'] = $result->atm_score_titn_s;
             $toReturn['titn_link'] = ($toReturn['titn'] > 0)?l(t('Go'), islandora_fjm_get_titn_addr($toReturn['titn'])): 
                 /**
