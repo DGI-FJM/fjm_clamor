@@ -11,18 +11,19 @@ class InstrumentClassDisplay extends BasicDisplay {
       $collection_query = <<<END_QUERY
 PREFIX fm: <info:fedora/fedora-system:def/model#>
 PREFIX atm-rel: <http://digital.march.es/atmusica#>
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
 SELECT ?object ?title ?thumbnail
 FROM <#ri>
 WHERE {
   ?object <fedora-rels-ext:isMemberOf> <info:fedora/$pid> ;
           fm:state fm:Active ;
-          fm:label ?title .
+          dc:title ?title .
   OPTIONAL {
   ?thumbnail atm-rel:isIconOf ?object ;
              fm:state fm:Active .
   }
 }
-ORDER BY ASC(?title)
+ORDER BY ?title
 END_QUERY;
       module_load_include('inc', 'fedora_repository', 'CollectionClass');
       module_load_include('inc', 'fedora_repository', 'ObjectHelper');

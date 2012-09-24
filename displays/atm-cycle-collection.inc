@@ -23,7 +23,7 @@ WHERE {
                fm:state fm:Active .
   } .
 }
-ORDER BY ASC(?title)
+ORDER BY ?title
 END_QUERY;
       module_load_include('inc', 'fedora_repository', 'CollectionClass');
       module_load_include('inc', 'fedora_repository', 'ObjectHelper');
