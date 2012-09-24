@@ -1231,7 +1231,12 @@ function template_preprocess_fjm_clamor_person(&$vars) {
   $vars['date']['birth'] = $eaccpf->evaluate('string(/e:eac-cpf/e:cpfDescription/e:description/e:existDates/e:dateRange/e:fromDate/@standardDate)');
   $vars['date']['death'] = $eaccpf->evaluate('string(/e:eac-cpf/e:cpfDescription/e:description/e:existDates/e:dateRange/e:toDate/@standardDate)');
   
-  $vars['biography'] = $eacdoc->saveXML($eaccpf->evaluate('/e:eac-cpf/e:cpfDescription/e:description/e:biogHist[@localType="primary"]/e:p | /e:eac-cpf/e:cpfDescription/e:description/e:biogHist/e:p')->item(0));
+  
+  $vars['biography'] = '';
+  $bio = $eaccpf->query('/e:eac-cpf/e:cpfDescription/e:description/e:biogHist[@localType="primary"] | /e:eac-cpf/e:cpfDescription/e:description/e:biogHist')->item(0);
+  foreach($eaccpf->query('e:p', $bio) as $p) {
+    $vars['biography'] .= $eacdoc->saveXML($p);
+  }
   if (strpos($vars['biography'], '&lt;p&gt;')) {
     $vars['biography'] = html_entity_decode($vars['biography']);
   }
@@ -1257,6 +1262,7 @@ function template_preprocess_fjm_clamor_person(&$vars) {
         'sort' => 'atm_performance_piece_title_mlt asc,atm_performance_year_s desc'
       )))
   );
+  
   //Define headers (presumably for a couple of tables), as well as how to get
   //  values for the given column out of the xpath objects created previously,
   //  and what to name them.
