@@ -1233,10 +1233,15 @@ function template_preprocess_fjm_clamor_person(&$vars) {
   
   
   $vars['biography'] = '';
-  $bio = $eaccpf->query('/e:eac-cpf/e:cpfDescription/e:description/e:biogHist[@localType="primary"] | /e:eac-cpf/e:cpfDescription/e:description/e:biogHist')->item(0);
+  $bio = $eaccpf->query('/e:eac-cpf/e:cpfDescription/e:description/e:biogHist[@localType="primary"]')->item(0);
+  if ($bio === NULL) {
+    $bio = $eaccpf->query('/e:eac-cpf/e:cpfDescription/e:description/e:biogHist')->item(0);
+  }
   foreach($eaccpf->query('e:p', $bio) as $p) {
     $vars['biography'] .= $eacdoc->saveXML($p);
   }
+  $vars['biography'] .= $bio->nodeValue;
+  $vars['biography'] = trim($vars['biography']);
   if (strpos($vars['biography'], '&lt;p&gt;')) {
     $vars['biography'] = html_entity_decode($vars['biography']);
   }
