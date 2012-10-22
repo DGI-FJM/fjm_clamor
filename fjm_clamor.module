@@ -974,7 +974,9 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
           'class' => 'atm_movement_empty_cell'
         ),
         array(
-          'data' => $movement['name'],
+          'data' => (user_access('edit fedora meta data')?
+            l($movement['name'], "fedora/repository/{$movement['pid']}"):
+            $movement['name']),
           'colspan' => '4',
           'class' => 'atm_movement_name'
         ),

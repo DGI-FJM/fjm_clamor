@@ -3,8 +3,9 @@
 module_load_include('inc', 'fjm_clamor', 'displays/basic-display');
 
 function theme_fjm_clamor_draggable_table($elements) {
+  $header = array();
   $rows = array();
-  foreach (element_children($elements) as $key) {
+  foreach (array_values(element_children($elements)) as $index => $key) {
     //Each child becomes a row...
     $element = $elements[$key];
     $row = array(
@@ -16,8 +17,13 @@ function theme_fjm_clamor_draggable_table($elements) {
       ),
     );
     
-    foreach (element_children($element) as $t) {
+    foreach (element_children($element) as $idx => $t) {
       $e = $element[$t];
+      if ($index === 0) {
+        $header[$idx] = array(
+          'data' => $e['#title'],
+        );
+      }
       unset($e['#title']);
       $row['data'][] = array(
         'data' => drupal_render($e),
@@ -26,9 +32,8 @@ function theme_fjm_clamor_draggable_table($elements) {
     
     $rows[] = $row;
   }
-  
-  
-  $markup = theme('table', array('', 'Name', 'Path/ID', 'Weight', 'Delete'), $rows, array('id' => 'movement-table'));
+
+  $markup = theme('table', $header, $rows, array('id' => 'movement-table'));
   drupal_add_tabledrag('movement-table', 'order', 'group', 'movement-row-weight');
   return $markup;
 }
@@ -83,19 +88,20 @@ function fjm_clamor_movement() {
     $button = array_pop($parents);
     if ($button == 'add_movement') {
       //If adding, add a movement to the end of the list.
-      $form_state['values']['movements'][] = array(
-        'path' => '',
-        'weight' => 100,
+      $form_state['storage']['movements'][] = array(
+        'name' => $form_state['values']['new_movement']['name'],
+        'identifier' => $form_state['values']['new_movement']['file'],
+        'weight' => count($form_state['storage']['movements']),
       );
     }
     elseif ($button == 'delete_movement') {
       //If removing, remove the proper movement.
-      $current =& $form_state['values'][array_shift($parents)];
+      $current =& $form_state['values']['movements'][array_shift($parents)];
       while ($key = array_shift($parents)) {
         $current =& $current[$key];
       }
       $current = NULL;
-      $form_state['values']['movements'] = array_filter($form_state['values']['movements']);
+      $form_state['storage']['movements'] = array_filter($form_state['values']['movements']);
     }
     
     //Rebuild.
@@ -196,7 +202,7 @@ function fjm_clamor_performance_ingest_form(&$form_state, $pid = NULL) {
       'score' => array(
         '#type' => 'item',
         '#title' => t('Score'),
-        '#description' => t('The score on which this performance is based. (Make autocomplete on title or composer)'),
+        '#description' => t('The score on which this performance is based.'),
         '#value' => (isset($storage['score'])? $storage['score']:$form_state['values']['score']),
       ),
       'hierarchy' => array(
@@ -210,10 +216,10 @@ function fjm_clamor_performance_ingest_form(&$form_state, $pid = NULL) {
     //If contains MP3; show selection (autocomplete or file upload?)
     if ($storage['hierarchy'] == 'performance') {
       $form['mp3'] = array(
-        '#type' => 'textfield',
+        '#tree' => FALSE,
+        '#type' => 'upload_element',
         '#title' => t('Audio file'),
         '#description' => t('Select the audio file representing this performance.'),
-        '#autocomplete_path' => 'fjm_clamor/movement',
       );
     }
     //Else if has MP3s in movements, setup AHAH stuff for adding multiple (orderable?) items.
@@ -233,52 +239,60 @@ function fjm_clamor_performance_ingest_form(&$form_state, $pid = NULL) {
         );
       }
       
-      foreach ($form_state['values']['movements'] as $key => $movement) {
+      if (!isset($form_state['storage']['movements'])) {
+        $form_state['storage']['movements'] = array();
+      }
+      foreach ($form_state['storage']['movements'] as $key => $movement) {
         // Should be a pid while editing...  Is this looking a little too far forwards?
         
         $form['movements'][$key] = array(
+          'key' => array(
+            '#type' => 'value',
+            '#value' => $key,
+          ),
           'name' => array(
-            '#type' => 'textfield',
+            '#type' => 'item',
             '#title' => t('Movement Name'),
-            '#default_value' => $movement['name'],
+            '#value' => $movement['name'],
           ),
           'identifier' => array(
-            '#type' => 'textfield',
+            '#type' => 'item',
             '#title' => t('Movement path'),
-            '#default_value' => $movement['identifier'],
-            '#autocomplete_path' => 'fjm_clamor/movement',
+            '#value' => isset($movement['identifier'])?t('Has file'):t('No file'),
+          ),
+          'delete_movement' => array(
+            '#type' => 'submit',
+            '#title' => t('Delete'),
+            '#name' => 'delete--' . $key,
+            '#value' => t('Delete movement association'),
           ),
           'weight' => array(
             '#type' => 'weight',
-            '#title' => t('Weight'),
+            //'#title' => t('Weight'),
             '#default_value' => $i++,
             '#attributes' => array(
               'class' => 'movement-row-weight',
             ),
           ),
         );
-        
-        if (count($form_state['values']['movements']) > 1) {
-          $form['movements'][$key] += array(
-            'delete_movement' => array(
-              '#type' => 'submit',
-              '#name' => 'delete--' . $key,
-              '#value' => t('Delete movement association'),
-              '#ahah' => array(
-                'path' => 'fjm_clamor/movement',
-                'wrapper' => 'movement-table-wrapper'
-              ),
-            ),
-          );
-        }
       }
       
-      $form['add_movement'] = array(
-        '#type' => 'submit',
-        '#value' => t('Add movement'),
-        '#ahah' => array(
-          'path' => 'fjm_clamor/movement',
-          'wrapper' => 'movement-table-wrapper'
+      $form['new_movement'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('New Movement'),
+        'name' => array(
+          '#type' => 'textfield',
+          '#title' => t('Movement name'),
+          '#description' => t('The name of the movement.'),
+        ),
+        'file' => array(
+          '#type' => 'upload_element',
+          '#title' => t('MP3 file'),
+          '#tree' => FALSE,
+        ),
+        'add_movement' => array(
+          '#type' => 'submit',
+          '#value' => t('Add movement'),
         ),
       );
     }
@@ -319,9 +333,43 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
     }
   }
   elseif ($storage['page'] === 1) {
-    //dsm($form_state, 'fs');
     //Get'er done!
-    if (isset($form_state['values']['submit'])) {
+    $parents = $form_state['clicked_button']['#array_parents'];
+    $button = array_pop($parents);
+
+    if ($button == 'delete_movement') {
+      //If removing, remove the proper movement.
+      // (Get the "key" value, and unset the entry in the $form_state['storage']['movements'] array
+      $current =& $form_state['values'][array_shift($parents)];
+      $key = array_shift($parents);
+      while ($key !== NULL) {
+        $current =& $current[$key];
+        $key = array_shift($parents);
+      }
+      file_delete($form_state['storage']['movements'][$current['key']]->filepath);
+      unset($form_state['storage']['movements'][$current['key']]);
+      $form_state['rebuild'] = TRUE;
+    }
+
+    // Change order of the movements in storage, based on the order of elements
+    //  of the rows.
+    $movements = array();
+    foreach ($form_state['clicked_button']['#post']['movements'] as $key => $mov) {
+      if (isset($form_state['storage']['movements'][$key])) {
+        $movements[] = $form_state['storage']['movements'][$key];
+      }
+    }
+    $form_state['storage']['movements'] = $movements;
+
+    if ($button == 'add_movement') {
+      //If adding, add a movement to the end of the list.
+      $form_state['storage']['movements'][] = array(
+        'name' => $form_state['values']['new_movement']['name'],
+        'identifier' => $form_state['values']['file'],
+      );
+      $form_state['rebuild'] = TRUE;
+    }
+    elseif ($button == 'submit') {
       module_load_include('inc', 'fedora_item', 'api/fedora_item');
       // Create the performance object
       $pid = Fedora_Item::get_next_PID_in_namespace('atm-test');
@@ -337,8 +385,9 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
       // If hierarchy is performance
       if ($storage['hierarchy'] == 'performance') {
       //   add MP3 if provided.
-        if (is_readable($values['mp3'])) {
-          $item->add_datastream_from_file($values['mp3'], 'MP3', 'MP3 datastream', 'audio/mpeg');
+        if (is_readable($values['mp3']->filepath)) {
+          $item->add_datastream_from_file($values['mp3']->filepath, 'MP3', 'MP3 datastream', $values['mp3']->filemime);
+          file_delete($values['mp3']->filepath);
         }
         else {
           drupal_set_message(t('Could not read file "@file" for @pid.', array(
@@ -351,7 +400,7 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
       elseif ($storage['hierarchy'] == 'movements') {
       //   For each movement
         $pids = Fedora_Item::get_next_PID_in_namespace('atm-test', count($values['movements']));
-        foreach (array_values($values['movements']) as $key => $movement) {
+        foreach (array_values($storage['movements']) as $key => $movement) {
       //     Create a movement object.
           $m_item = Fedora_Item::ingest_new_item(array_shift($pids), 'A', $movement['name']);
           $m_item->add_relationship('hasModel', 'atm:movementCModel', FEDORA_MODEL_URI);
@@ -360,8 +409,9 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
       //     Add the order literal.
           $m_item->add_relationship('pieceOrder', $key, 'http://digital.march.es/atmusica#', RELS_TYPE_PLAIN_LITERAL);
       //     Add the MP3
-          if (is_readable($movement['identifier'])) {
-            $m_item->add_datastream_from_file($movement['identifier'], 'MP3', 'MP3 datastream', 'audio/mpeg');
+          if (is_readable($movement['identifier']->filepath)) {
+            $m_item->add_datastream_from_file($movement['identifier']->filepath, 'MP3', 'MP3 datastream', $movement['identifier']->filemime);
+            file_delete($movement['identifier']->filepath);
           }
           else {
             drupal_set_message(t('Could not read file "@file" for @pid.', array(
