@@ -354,9 +354,11 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
     // Change order of the movements in storage, based on the order of elements
     //  of the rows.
     $movements = array();
-    foreach ($form_state['clicked_button']['#post']['movements'] as $key => $mov) {
-      if (isset($form_state['storage']['movements'][$key])) {
-        $movements[] = $form_state['storage']['movements'][$key];
+    if (isset($form_state['clicked_button']['#post']['movements'])) {
+      foreach ($form_state['clicked_button']['#post']['movements'] as $key => $mov) {
+        if (isset($form_state['storage']['movements'][$key])) {
+          $movements[] = $form_state['storage']['movements'][$key];
+        }
       }
     }
     $form_state['storage']['movements'] = $movements;
@@ -386,6 +388,7 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
       if ($storage['hierarchy'] == 'performance') {
       //   add MP3 if provided.
         if (is_readable($values['mp3']->filepath)) {
+          fjm_clamor_fix_mp3($values['mp3']->filepath);
           $item->add_datastream_from_file($values['mp3']->filepath, 'MP3', 'MP3 datastream', $values['mp3']->filemime);
           file_delete($values['mp3']->filepath);
         }
@@ -410,6 +413,7 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
           $m_item->add_relationship('pieceOrder', $key, 'http://digital.march.es/atmusica#', RELS_TYPE_PLAIN_LITERAL);
       //     Add the MP3
           if (is_readable($movement['identifier']->filepath)) {
+            fjm_clamor_fix_mp3($movement['identifier']->filepath);
             $m_item->add_datastream_from_file($movement['identifier']->filepath, 'MP3', 'MP3 datastream', $movement['identifier']->filemime);
             file_delete($movement['identifier']->filepath);
           }
@@ -472,6 +476,7 @@ function fjm_clamor_lecture_ingest_form_submit(&$form, &$form_state) {
   $item = Fedora_Item::ingest_new_item($new_pid, 'A', 'Lecture in ' . $parent_pid);
   $item->add_relationship('hasModel', 'atm:lectureCModel', FEDORA_MODEL_URI);
   $item->add_relationship('isMemberOf', $parent_pid);
+  fjm_clamor_fix_mp3($form_state['values']['file']->filepath);
   $item->add_datastream_from_file($form_state['values']['file']->filepath,
     'MP3',
     'MP3 datastream',
@@ -481,6 +486,21 @@ function fjm_clamor_lecture_ingest_form_submit(&$form, &$form_state) {
   if (!empty($form_state['values']['description'])) {
     fjm_clamor_set_dc_description($new_pid, $form_state['values']['description']);
   }
+}
+
+/**
+ * Fix placement of MP3's internal metadata.
+ *
+ * @param string $path
+ *   A string containing a file path to pass off to mp3val.  Should change the
+ *   file in-place, so file handles will have to be recreated, but the
+ *   file path should remain the same. 
+ */
+function fjm_clamor_fix_mp3($path) {
+  //XXX:  Assuming about the location of mp3val...  This happens to be where
+  //  it is on both fjm-dev.dgi and digital.march.es though.
+  $command = '/usr/local/bin/mp3val ' . escapeshellarg($path) . ' -f';
+  exec($path);
 }
 
 class ConcertDisplay extends BasicDisplay {
