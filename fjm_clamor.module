@@ -1423,6 +1423,7 @@ function fjm_clamor_form_fedora_repository_ingest_form_alter(&$form, &$form_stat
     if ($form['pdf']['#type'] == 'upload_element') {
       $form['pdf']['#tree'] = FALSE;
     }
+    $form['#submit'][] = 'fjm_clamor_set_titn';
     $form['#submit'][] = 'fjm_clamor_score_add_pdf';
     $form['composer']['#element_validate'][] = 'fjm_clamor_valid_pid';
     $form['#action'] = url('fedora/repository/' . $form_state['storage']['collection_pid'], array(
@@ -1464,10 +1465,14 @@ function fjm_clamor_form_fedora_repository_edit_qdc_form_alter(&$form, &$form_st
       $pid = $form['pid']['#value'];
       $q = <<<EOQ
 PREFIX atm-rel: <http://digital.march.es/atmusica#>
-SELECT ?composer
+PREFIX fjm-titn: <http://digital.march.es/titn#>
+SELECT ?composer ?titn
 FROM <#ri>
 WHERE {
   <info:fedora/$pid> atm-rel:composedBy ?composer .
+  OPTIONAL {
+    <info:fedora/$pid> fjm-titn:score ?titn .
+  }
 }
 EOQ;
       //XXX: Should only be one...  Anyway...
@@ -1476,12 +1481,20 @@ EOQ;
           '#type' => 'value',
           '#value' => $result['composer'],
         );
+        if ($result['titn']) {
+          $form['initial_titn'] = array(
+            '#type' => 'value',
+            '#value' => $result['titn'],
+          );
+          $form['titn']['#default_value'] = $result['titn'];
+        }
         $form['composer']['#default_value'] = $result['composer'];
         break;
       }
     }
-    
+
     //Add in the submit handler to recreate the relation.
+    $form['#submit'][] = 'fjm_clamor_set_titn';
     $form['#submit'][] = 'fjm_clamor_score_submit_add_composer_relation';
     
     $form['pdf']['#tree'] = FALSE;
@@ -1491,6 +1504,33 @@ EOQ;
   }
   elseif ($form['content_model_pid']['#value'] == 'atm:personCModel') {
     array_unshift($form['#submit'], 'fjm_clamor_person_fix_label');
+  }
+}
+
+function fjm_clamor_set_titn(&$form, &$form_state) {
+  if ($form_state['values']['content_model_pid'] == 'atm:scoreCModel') {
+    $old_titn = NULL;
+    $new_titn = NULL;
+    if (isset($form_state['values']['initial_titn'])) {
+      $old_titn = $form_state['values']['initial_titn'];
+    }
+
+    if (isset($form_state['values']['titn']) && !empty($form_state['values']['titn'])) {
+      $new_titn = $form_state['values']['titn'];
+    }
+
+    if ($old_titn != $new_titn) {
+      //We have a new Titn, so out with the old, in with the new.
+      module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+      $item = new Fedora_Item($form_state['values']['pid']);
+      $ns = 'http://digital.march.es/titn#';
+      if ($old_titn !== NULL) {
+        $item->purge_relationships('score', NULL, $ns, RELS_TYPE_PLAIN_LITERAL);
+      }
+      if ($new_titn !== NULL) {
+        $item->add_relationship('fjm-titn:score', $new_titn, $ns, RELS_TYPE_PLAIN_LITERAL);
+      }
+    }
   }
 }
  
@@ -1535,7 +1575,7 @@ function fjm_clamor_score_submit_add_composer_relation(&$form, &$form_state) {
   if (empty($form_state['values']['initial_composer']) ||
     ($form_state['values']['initial_composer'] != $form_state['values']['composer'])) {
     //and add the author relationship.
-    $item->add_relationship('composedBy', $form_state['values']['composer'], 'http://digital.march.es/atmusica#');
+    $item->add_relationship('atm-rel:composedBy', $form_state['values']['composer'], 'http://digital.march.es/atmusica#');
   }
 }
 
