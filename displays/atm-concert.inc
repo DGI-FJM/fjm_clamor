@@ -10,11 +10,7 @@ function theme_fjm_clamor_draggable_table($elements) {
     $element = $elements[$key];
     $row = array(
       'class' => 'draggable',
-      'data' => array(
-        array(
-          'data' => '', //empty, to contain dragger
-        ),
-      ),
+      'data' => array(),
     );
     
     foreach (element_children($element) as $idx => $t) {
@@ -257,7 +253,7 @@ function fjm_clamor_performance_ingest_form(&$form_state, $pid = NULL) {
           ),
           'identifier' => array(
             '#type' => 'item',
-            '#title' => t('Movement path'),
+            '#title' => t('MP3?'),
             '#value' => isset($movement['identifier'])?t('Has file'):t('No file'),
           ),
           'delete_movement' => array(
