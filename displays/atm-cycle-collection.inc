@@ -72,7 +72,7 @@ function fjm_clamor_cycle_create_form_submit(&$form, &$form_state) {
   $parent = $form_state['values']['parent'];
   
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
-  $pid = Fedora_Item::get_next_PID_in_namespace(variable_get('fjm_clamor_namespace', 'atm-test'));
+  $pid = Fedora_Item::get_next_PID_in_namespace(variable_get('fjm_clamor_namespace', 'atm'));
   $message = '';
   $item = Fedora_Item::ingest_new_item($pid, 'A', $name);
   

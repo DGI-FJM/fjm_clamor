@@ -1381,7 +1381,7 @@ function fjm_clamor_islandora_content_model_forms_get_transforms() {
 }
 
 function fjm_clamor_form_fedora_repository_ingest_form_alter(&$form, &$form_state) {
-  $pid_namespace = 'atm-test';
+  $pid_namespace = 'atm';
   //dsm($form_state, 'fs');
   if ($form_state['storage']['collection_pid'] == 'atm:personCollection') {
     $form['#action'] = url('fedora/repository/' . $form_state['storage']['collection_pid'], array(

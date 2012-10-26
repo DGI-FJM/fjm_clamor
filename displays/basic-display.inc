@@ -256,7 +256,7 @@ function fjm_clamor_image_set_form_submit(&$form, &$form_state) {
     $make_icon = $form_state['values']['add']['add_existing']['make_icon'];
   }
   elseif ($form_state['clicked_button']['#name'] == 'create_new') {
-    $new_pid = Fedora_Item::get_next_PID_in_namespace('atm-test');
+    $new_pid = Fedora_Item::get_next_PID_in_namespace('atm');
     $desc = trim($form_state['values']['add']['add_new']['description']);
     $make_icon = $form_state['values']['add']['add_new']['make_icon'];
     $img = Fedora_Item::ingest_new_item($new_pid, 'A', truncate_utf8($desc, 255, TRUE, TRUE));

@@ -370,7 +370,7 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
     elseif ($button == 'submit') {
       module_load_include('inc', 'fedora_item', 'api/fedora_item');
       // Create the performance object
-      $pid = Fedora_Item::get_next_PID_in_namespace('atm-test');
+      $pid = Fedora_Item::get_next_PID_in_namespace('atm');
       $item = Fedora_Item::ingest_new_item($pid, 'A', 'Performance (get name from related score)');
       $item->add_relationship('hasModel', 'atm:performanceCModel', FEDORA_MODEL_URI);
       //Add the relation to the concert
@@ -398,7 +398,7 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
       // If hierarchy is movements...
       elseif ($storage['hierarchy'] == 'movements') {
       //   For each movement
-        $pids = Fedora_Item::get_next_PID_in_namespace('atm-test', count($values['movements']));
+        $pids = Fedora_Item::get_next_PID_in_namespace('atm', count($values['movements']));
         foreach (array_values($storage['movements']) as $key => $movement) {
       //     Create a movement object.
           $m_item = Fedora_Item::ingest_new_item(array_shift($pids), 'A', $movement['name']);
@@ -467,7 +467,7 @@ function fjm_clamor_lecture_ingest_form_validate(&$form, &$form_state) {
 function fjm_clamor_lecture_ingest_form_submit(&$form, &$form_state) {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
   
-  $new_pid = Fedora_Item::get_next_PID_in_namespace('atm-test');
+  $new_pid = Fedora_Item::get_next_PID_in_namespace('atm');
   $parent_pid = $form_state['values']['parent_pid'];
   $item = Fedora_Item::ingest_new_item($new_pid, 'A', 'Lecture in ' . $parent_pid);
   $item->add_relationship('hasModel', 'atm:lectureCModel', FEDORA_MODEL_URI);

@@ -89,7 +89,7 @@ function fjm_clamor_performer_form_submit(&$form, &$form_state) {
   if (empty($values_group)) {
     $values_group = 'atm:unaffiliatedPerformer';
   }
-  $pid = Fedora_Item::get_next_PID_in_namespace('atm-test');
+  $pid = Fedora_Item::get_next_PID_in_namespace('atm');
   $item = Fedora_Item::ingest_new_item($pid, 'A', t('Performer @perf/@pid/@group/@instrument', array(
     '@perf' => $values_performance,
     '@pid' => $values_person,
