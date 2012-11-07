@@ -28,7 +28,7 @@ function fjm_clamor_performer_item_autocomplete($field, $string) {
   $qp->buildAndExecuteQuery("{$map[$field]['field']}:($string)");
   
   $results = array();
-  foreach ($qp->solrResult->response->docs as $doc) {
+  foreach ((array)$qp->solrResult->response->docs as $doc) {
     $results[$doc->PID] = $doc->{$map[$field]['field']};
   }
   drupal_json($results);
@@ -72,13 +72,13 @@ function fjm_clamor_performer_form(&$form_state, $pid) {
 function fjm_clamor_performer_form_validate($form, &$form_state) {
   module_load_include('inc', 'fedora_repository', 'api/fedora_utils');
   extract($form_state['values'], EXTR_PREFIX_ALL, 'values');
-  if (empty($values_person) || !valid_pid($values_person) || fjm_clamor_model_test($values_person, 'atm:personCModel')) {
+  if (empty($values_person) || !valid_pid($values_person) || !fjm_clamor_model_test($values_person, 'atm:personCModel')) {
     form_set_error('person', t('Need a valid PID for "person".'));
   }
-  if (empty($values_instrument) || !valid_pid($values_instrument) || fjm_clamor_model_test($values_instrument, 'atm:instrumentCModel')) {
+  if (empty($values_instrument) || !valid_pid($values_instrument) || !fjm_clamor_model_test($values_instrument, 'atm:instrumentCModel')) {
     form_set_error('instrument', t('Need a valid PID for "instrument".'));
   }
-  if (!empty($values_group) && (!valid_pid($values_group) || fjm_clamor_model_test($values_group, 'atm:groupCModel'))) {
+  if (!empty($values_group) && (!valid_pid($values_group) || !fjm_clamor_model_test($values_group, 'atm:groupCModel'))) {
     form_set_error('group', t('Group PID must be valid, if provided.'));
   }
 }
