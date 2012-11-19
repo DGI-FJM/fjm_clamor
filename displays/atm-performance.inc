@@ -115,10 +115,31 @@ class PerformanceDisplay extends BasicDisplay {
     }
     
     if (user_access('edit fedora meta data')) {
+      if (!self::hasMP3($pid)) {
+        $tabset += self::modifyMovementTab($pid);
+      }
       $tabset += self::addPerformerTab($pid);
     }
     
     return $tabset;
+  }
+
+  protected static function modifyMovementTab($pid) {
+    return array(
+      'modify-movements' => array(
+        '#type' => 'tabpage',
+        '#title' => t('Modify Movements'),
+        '#tab_name' => 'modify-movements',
+        '#content' => drupal_get_form('fjm_clamor_modify_movements_form', $pid),
+      ),
+    );
+  }
+
+  protected static function hasMP3($pid) {
+    module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+    $item = new Fedora_Item($pid);
+
+    return in_array('MP3', $item->datastreams);
   }
   
   protected static function addPerformerTab($pid) {
@@ -197,5 +218,191 @@ class PerformanceDisplay extends BasicDisplay {
     }
     
     return $tab;
+  }
+}
+
+function fjm_clamor_modify_movements_form(&$form_state, $pid) {
+  // Load the movement info into storage.
+  if (empty($form_state['storage']['movements'])) {
+    $form_state['storage']['movements'] = array();
+
+    module_load_include('inc', 'fedora_repository', 'ObjectHelper');
+    $results = ObjectHelper::performSparqlQuery(<<<EOQ
+PREFIX atm-rel: <http://digital.march.es/atmusica#>
+SELECT ?name ?identifier ?key
+FROM <#ri>
+WHERE {
+  ?identifier <fedora-rels-ext:isMemberOf> <info:fedora/$pid> ;
+              atm-rel:pieceOrder ?key ;
+              <fedora-model:label> ?name .
+}
+EOQ
+);
+
+    foreach ($results as $movement) {
+      $form_state['storage']['movements'][$movement['key']] = $movement;
+    }
+
+    ksort($form_state['storage']['movements']);
+  }
+  
+
+
+  $form = array(
+    '#tree' => TRUE,
+  );
+  $form['performance_pid'] = array(
+    '#type' => 'value',
+    '#value' => $pid,
+  );
+  $form['movements'] = array(
+    '#theme' => 'fjm_clamor_draggable_table',
+    '#prefix' => '<div id="movement-table-wrapper">',
+    '#suffix' => '</div>',
+  );
+
+  foreach ($form_state['storage']['movements'] as $key => $movement) {
+    // Should be a pid while editing...  Is this looking a little too far forwards?
+    $form['movements'][$key] = array(
+      'key' => array(
+        '#type' => 'value',
+        '#value' => $key,
+      ),
+      'name' => array(
+        '#type' => 'item',
+        '#title' => t('Movement Name'),
+        '#value' => l($movement['name'], "fedora/repository/{$movement['identifier']}"),
+      ),
+      //'identifier' => array(
+      //  '#type' => 'item',
+      //  '#title' => t('MP3?'),
+      //  '#value' => isset($movement['identifier'])?t('Has file'):t('No file'),
+      //),
+      'delete_movement' => array(
+        '#type' => 'submit',
+        '#title' => t('Delete'),
+        '#name' => 'delete--' . $key,
+        '#value' => t('Delete movement association'),
+      ),
+      'weight' => array(
+        '#type' => 'weight',
+        //'#title' => t('Weight'),
+        '#default_value' => $i++,
+        '#attributes' => array(
+         'class' => 'movement-row-weight',
+        ),
+      ),
+    );
+  }
+
+  $form['rearrange'] = array(
+    '#type' => 'submit',
+    '#value' => t('Commit movement order'),
+  );
+
+  $form['new_movement'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('New Movement'),
+    'name' => array(
+      '#type' => 'textfield',
+      '#title' => t('Movement name'),
+      '#description' => t('The name of the movement.'),
+    ),
+    'file' => array(
+      '#type' => 'upload_element',
+      '#title' => t('MP3 file'),
+      '#tree' => FALSE,
+    ),
+    'add_movement' => array(
+      '#type' => 'submit',
+      '#value' => t('Add movement'),
+    ),
+  );
+
+  $form['#action'] = "#modify-movements";
+
+  return $form;
+}
+
+function fjm_clamor_modify_movements_form_validate($form, $form_state) {
+  // Nothing to do?
+}
+
+function fjm_clamor_modify_movements_form_submit(&$form, &$form_state) {
+  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+
+  $parents = $form_state['clicked_button']['#array_parents'];
+  $button = array_pop($parents);
+
+  if ($button == 'delete_movement') {
+    //If removing, remove the proper movement.
+    // (Get the "key" value, and unset the entry in the $form_state['storage']['movements'] array
+    $current =& $form_state['values'][array_shift($parents)];
+    $key = array_shift($parents);
+    while ($key !== NULL) {
+      $current =& $current[$key];
+      $key = array_shift($parents);
+    }
+
+    $m_item = new Fedora_Item($form_state['storage']['movements'][$current['key']]['identifier']);
+    $m_item->purge_relationships('isMemberOf', "info:fedora/{$form_state['values']['performance_pid']}", RELS_EXT_URI);
+    unset($m_item);
+    unset($form_state['storage']['movements'][$current['key']]);
+  }
+
+  // Change order of the movements in storage, based on the order of elements
+  //  of the rows. ('#post' has them in the order in which they were posted)
+  $movements = array();
+  if (isset($form_state['clicked_button']['#post']['movements'])) {
+    foreach ($form_state['clicked_button']['#post']['movements'] as $key => $mov) {
+      if (isset($form_state['storage']['movements'][$key])) {
+        $current_key = count($movements);
+        if ($key != $current_key) {
+          // The position of this one changed, so update its RELS-EXT....
+
+          // ... Get the object.
+          $m_item = new Fedora_Item($form_state['storage']['movements'][$key]['identifier']);
+          //     Purge the old relationship.
+          $m_item->purge_relationships('pieceOrder', NULL, 'http://digital.march.es/atmusica#');
+          //     Add the new order literal.
+          $m_item->add_relationship('pieceOrder', $current_key, 'http://digital.march.es/atmusica#', RELS_TYPE_PLAIN_LITERAL);
+          unset($m_item);
+        }
+        $movements[] = $form_state['storage']['movements'][$key];
+      }
+    }
+  }
+  $form_state['storage']['movements'] = $movements;
+
+  if ($button == 'add_movement') {
+    $pid = Fedora_Item::get_next_PID_in_namespace('atm');
+    $key = count($form_state['storage']['movements']);
+    //     Create a movement object.
+    $m_item = Fedora_Item::ingest_new_item($pid, 'A', $form_state['values']['new_movement']['name']);
+    $m_item->add_relationship('hasModel', 'atm:movementCModel', FEDORA_MODEL_URI);
+    //     Relate it to the performance.
+    $m_item->add_relationship('isMemberOf', $form_state['values']['performance_pid'], RELS_EXT_URI);
+    //     Add the order literal.
+    $m_item->add_relationship('pieceOrder', $key, 'http://digital.march.es/atmusica#', RELS_TYPE_PLAIN_LITERAL);
+
+    $form_state['storage']['movements'][] = array(
+      'identifier' => $pid,
+      'name' => $form_state['values']['new_movement']['name'],
+      'key' => $key,
+    );
+
+    //     Add the MP3
+    if (is_readable($form_state['values']['file']->filepath)) {
+      fjm_clamor_fix_mp3($form_state['values']['file']->filepath);
+      $m_item->add_datastream_from_file($form_state['values']['file']->filepath, 'MP3', 'MP3 datastream', $form_state['values']['file']->filemime);
+      file_delete($form_state['values']['file']->filepath);
+    }
+    else {
+      drupal_set_message(t('Could not read file "@file" for @pid.', array(
+        '@file' => $movement['identifier'],
+        '@pid' => $m_item->pid,
+      )), 'warning');
+    }
+    $m_item->forget();
   }
 }

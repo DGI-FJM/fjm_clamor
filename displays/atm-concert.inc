@@ -484,21 +484,6 @@ function fjm_clamor_lecture_ingest_form_submit(&$form, &$form_state) {
   }
 }
 
-/**
- * Fix placement of MP3's internal metadata.
- *
- * @param string $path
- *   A string containing a file path to pass off to mp3val.  Should change the
- *   file in-place, so file handles will have to be recreated, but the
- *   file path should remain the same. 
- */
-function fjm_clamor_fix_mp3($path) {
-  //XXX:  Assuming about the location of mp3val...  This happens to be where
-  //  it is on both fjm-dev.dgi and digital.march.es though.
-  $command = '/usr/local/bin/mp3val ' . escapeshellarg($path) . ' -f';
-  exec($path);
-}
-
 class ConcertDisplay extends BasicDisplay {
   public static function addTabsStatically($pid, $piece_index = NULL) {
     $tabset = array();
