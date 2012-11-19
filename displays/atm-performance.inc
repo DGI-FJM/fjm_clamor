@@ -21,7 +21,7 @@ function fjm_clamor_performer_item_autocomplete($field, $string) {
   
   $qp = new IslandoraSolrQueryProcessor();
   
-  $qp->solrParam = array(
+  $qp->solrParams = array(
     'fq' => $map[$field]['fq'],
     'rows' => 10,
   );
