@@ -245,8 +245,6 @@ EOQ
 
     ksort($form_state['storage']['movements']);
   }
-  
-
 
   $form = array(
     '#tree' => TRUE,

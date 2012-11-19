@@ -378,7 +378,7 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
       // Relate the performance to its score.
       $item->add_relationship('basedOn', $storage['score'], 'http://digital.march.es/atmusica#');
       // Add the order literal.
-      $order = 0;
+      $order = fjm_clamor_get_next_performance_index($form_state['storage']['parent_pid']);
       $item->add_relationship('concertOrder', $order, 'http://digital.march.es/atmusica#', RELS_TYPE_PLAIN_LITERAL);
       // If hierarchy is performance
       if ($storage['hierarchy'] == 'performance') {
@@ -425,6 +425,31 @@ function fjm_clamor_performance_ingest_form_submit(&$form, &$form_state) {
       unset($form_state['storage']);
     }
   }
+}
+
+function fjm_clamor_get_next_performance_index($parent_pid) {
+  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+  
+  $results = ObjectHelper::performSparqlQuery(<<<EOQ
+PREFIX atm-rel: <http://digital.march.es/atmusica#>
+SELECT ?indexOne
+FROM <#ri>
+WHERE {
+  ?performanceOne <fedora-rels-ext:isMemberOf> <info:fedora/$parent_pid> ;
+                  atm-rel:concertOrder ?indexOne .
+}
+ORDER BY ?indexOne
+EOQ
+);
+
+  $next = -1;
+  if ($results) {
+    $result = array_pop($results);
+    $next = intval($result['indexOne']);
+  }
+  $next++;
+
+  return $next;
 }
 
 function fjm_clamor_lecture_ingest_form(&$form_state, $pid = NULL) {
@@ -497,6 +522,16 @@ class ConcertDisplay extends BasicDisplay {
           '#weight' => $i++,
       );
     }
+
+    if (user_access('edit fedora meta data')) {
+      $tabset['modify-performances'] = array(
+        '#type' => 'tabpage',
+        '#title' => t('Modify Performance Order'),
+        '#weight' => $i++,
+        '#tab_name' => 'modify-performances',
+        '#content' => drupal_get_form('fjm_clamor_modify_performances_form', $pid),
+      );
+    }
     
     //Allow addition of Performances to the Concert
     if (user_access('ingest new fedora objects')) {
@@ -550,4 +585,133 @@ EOQ
 
       return $results[0]['obj'];
   }
+}
+
+function fjm_clamor_modify_performances_form(&$form_state, $pid) {
+  // Load the performance info into storage.
+  if (empty($form_state['storage']['performances'])) {
+    $form_state['storage']['performances'] = array();
+
+    module_load_include('inc', 'fedora_repository', 'ObjectHelper');
+    $results = ObjectHelper::performSparqlQuery(<<<EOQ
+PREFIX atm-rel: <http://digital.march.es/atmusica#>
+SELECT ?name ?identifier ?key
+FROM <#ri>
+WHERE {
+  ?identifier <fedora-rels-ext:isMemberOf> <info:fedora/$pid> ;
+              atm-rel:concertOrder ?key ;
+              atm-rel:basedOn ?score .
+  ?score <fedora-model:label> ?name .
+}
+ORDER BY ?key
+EOQ
+);
+
+    foreach ($results as $performance) {
+      $form_state['storage']['performances'][] = $performance;
+    }
+  }
+  
+  $form = array(
+    '#tree' => TRUE,
+  );
+  $form['concert_pid'] = array(
+    '#type' => 'value',
+    '#value' => $pid,
+  );
+  $form['performances'] = array(
+    '#theme' => 'fjm_clamor_draggable_table',
+    '#prefix' => '<div id="movement-table-wrapper">',
+    '#suffix' => '</div>',
+  );
+  
+  foreach ($form_state['storage']['performances'] as $key => $performance) {
+    // Should be a pid while editing...  Is this looking a little too far forwards?
+    $form['performances'][$key] = array(
+      'key' => array(
+        '#type' => 'value',
+        '#value' => $key,
+      ),
+      'name' => array(
+        '#type' => 'item',
+        '#title' => t('Performance Name'),
+        '#value' => l($performance['name'], "fedora/repository/{$performance['identifier']}"),
+      ),
+      //'identifier' => array(
+      //  '#type' => 'item',
+      //  '#title' => t('MP3?'),
+      //  '#value' => isset($movement['identifier'])?t('Has file'):t('No file'),
+      //),
+      'delete_performance' => array(
+        '#type' => 'submit',
+        '#title' => t('Delete'),
+        '#name' => 'delete--' . $key,
+        '#value' => t('Delete performance association'),
+      ),
+      'weight' => array(
+        '#type' => 'weight',
+        //'#title' => t('Weight'),
+        '#default_value' => $i++,
+        '#attributes' => array(
+         'class' => 'movement-row-weight',
+        ),
+      ),
+    );
+  }
+
+  $form['rearrange'] = array(
+    '#type' => 'submit',
+    '#value' => t('Commit performance order'),
+  );
+
+  $form['#action'] = '#modify-performances';
+
+  return $form;
+}
+
+function fjm_clamor_modify_performances_form_submit(&$form, &$form_state) {
+  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+
+  $parents = $form_state['clicked_button']['#array_parents'];
+  $button = array_pop($parents);
+
+  if ($button == 'delete_performance') {
+    //If removing, remove the proper movement.
+    // (Get the "key" value, and unset the entry in the $form_state['storage']['movements'] array
+    $current =& $form_state['values'][array_shift($parents)];
+    $key = array_shift($parents);
+    while ($key !== NULL) {
+      $current =& $current[$key];
+      $key = array_shift($parents);
+    }
+
+    $m_item = new Fedora_Item($form_state['storage']['performances'][$current['key']]['identifier']);
+    $m_item->purge_relationships('isMemberOf', "info:fedora/{$form_state['values']['concert_pid']}", RELS_EXT_URI);
+    unset($m_item);
+    unset($form_state['storage']['performances'][$current['key']]);
+  }
+
+  // Change order of the performances, based on the order of elements
+  //  of the rows. ('#post' has them in the order in which they were posted)
+  $movements = array();
+  if (isset($form_state['clicked_button']['#post']['performances'])) {
+    foreach ($form_state['clicked_button']['#post']['performances'] as $key => $mov) {
+      if (isset($form_state['storage']['performances'][$key])) {
+        $current_key = count($movements);
+        if ($key != $current_key) {
+          // The position of this one changed, so update its RELS-EXT....
+
+          // ... Get the object.
+          $m_item = new Fedora_Item($form_state['storage']['performances'][$key]['identifier']);
+          //     Purge the old relationship.
+          $m_item->purge_relationships('concertOrder', NULL, 'http://digital.march.es/atmusica#');
+          //     Add the new order literal.
+          $m_item->add_relationship('concertOrder', $current_key, 'http://digital.march.es/atmusica#', RELS_TYPE_PLAIN_LITERAL);
+          unset($m_item);
+        }
+        $movements[] = $form_state['storage']['performances'][$key];
+      }
+    }
+  }
+  $form_state['storage']['performances'] = $movements;
 }
