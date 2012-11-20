@@ -1636,5 +1636,5 @@ function fjm_clamor_fix_mp3($path) {
   //XXX:  Assuming about the location of mp3val...  This happens to be where
   //  it is on both fjm-dev.dgi and digital.march.es though.
   $command = '/usr/local/bin/mp3val ' . escapeshellarg($path) . ' -f';
-  exec($path);
+  exec($command);
 }
