@@ -880,11 +880,11 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
   );
   $qp->buildAndExecuteQuery("*:*");
   
-  $perf_results = array();
-  if (count($qp->solrResult->response->docs) > 0) {
-    $perf_results = $qp->solrResult->response->docs;
-    $qp->solrResult->response->docs = array();
-  }
+  //$perf_results = array();
+  //if (count($qp->solrResult->response->docs) > 0) {
+  //  $perf_results = $qp->solrResult->response->docs;
+  //  $qp->solrResult->response->docs = array();
+  //}
 
   $concert = array(
     'title' => $concertResults->atm_concert_title_s,
@@ -902,25 +902,70 @@ function template_preprocess_fjm_clamor_concert(&$vars) {
   );
   
   $js_data = array('islandora_fjm' => array('piece' => array(), 'lecture' => array()));
-  foreach($perf_results as $doc) {
+
+  $perf_results = ObjectHelper::performSparqlQuery(<<<EOQ
+PREFIX atm-rel: <http://digital.march.es/atmusica#>
+PREFIX fjm-titn: <http://digital.march.es/titn#>
+SELECT ?pid ?piece ?composer_pid ?composer_name ?score ?localpdfscore ?score_titn ?order ?mp3stat
+FROM <#ri>
+WHERE {
+  ?pid <fedora-rels-ext:isMemberOf> <info:fedora/$pid> ;
+       atm-rel:basedOn ?score ;
+       atm-rel:concertOrder ?order .
+  ?score <dc:title> ?piece ;
+         atm-rel:composedBy ?composer_pid .
+  ?composer_pid <dc:title> ?composer_name .
+  OPTIONAL {
+    ?pid <fedora-view:disseminates> ?mp3stat .
+    ?mp3stat <fedora-view:disseminationType> <info:fedora/*/MP3>
+  } .
+  OPTIONAL {
+    ?score fjm-titn:score ?score_titn
+  } .
+  OPTIONAL {
+    ?score <fedora-view:disseminates> ?localpdfscore .
+    ?localpdfscore <fedora-view:disseminationType> <info:fedora/*/PDF>
+  } .
+}
+ORDER BY ?order
+EOQ
+);
+  foreach($perf_results as $performance) {
     $performance = array(
-        'pid' => $doc->PID,
-        'piece' => $doc->atm_performance_piece_title_s,
         'composer' => array(
-          'pid' => $doc->atm_performance_composer_pid_s,
-          'name'=> $doc->atm_performance_composer_name_s
+          'pid' => $performance['composer_pid'],
+          'name'=> $performance['composer_name'],
         ),
-        'localpdf' => ($doc->atm_performance_score_pdf_b === TRUE),
-        'localpdfscore' => islandora_fjm_get_pid_from_array((array)$doc->rels_basedOn_ms),
-        'score_titn' => $doc->atm_performance_score_titn_s,
-        'order' => $doc->rels_concertOrder_ms,
-        'mp3stat' => ($doc->atm_performance_mp3_b === TRUE),
-        'movements' => array_map('_fjm_clamor_map_movements', 
-          (array)$doc->atm_performance_movement_ms,
-          (array)$doc->atm_performance_movement_name_ms,
-          (array)$doc->atm_performance_movement_mp3_ms
-        ),
-    );
+        'localpdf' => !empty($performance['localpdfscore']),
+        'mp3stat' => !empty($performance['mp3stat']),
+        'movements' => array(), //array_map('_fjm_clamor_map_movements', 
+        //  (array)$doc->atm_performance_movement_ms,
+        //  (array)$doc->atm_performance_movement_name_ms,
+        //  (array)$doc->atm_performance_movement_mp3_ms
+        //),
+    ) + $performance;
+
+    $m_res = ObjectHelper::performSparqlQuery(<<<EOQ
+PREFIX atm-rel: <http://digital.march.es/atmusica#>
+SELECT ?pid ?name ?mp3 ?order
+FROM <#ri>
+WHERE {
+  ?pid <fedora-rels-ext:isMemberOf> <info:fedora/{$performance['pid']}> ;
+       <dc:title> ?name ;
+       atm-rel:pieceOrder ?order .
+  OPTIONAL {
+    ?pid <fedora-view:disseminates> ?mp3 .
+    ?mp3 <fedora-view:disseminationType> <info:fedora/*/MP3>
+  } .
+}
+ORDER BY ?order
+EOQ
+);
+    foreach ($m_res as $movement) {
+      $performance['movements'][] = array(
+        'hasMP3' => !empty($movement['mp3']) ? 'true' : 'false',
+      ) + $movement;
+    }
     
     $players = (array)$doc->atm_performance_player_ms;
     $instrument = (array)$doc->atm_performance_inst_ms;

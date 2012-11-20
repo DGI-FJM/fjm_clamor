@@ -664,7 +664,7 @@ EOQ
     '#value' => t('Commit performance order'),
   );
 
-  $form['#action'] = '#modify-performances';
+  //$form['#action'] = '#modify-performances';
 
   return $form;
 }
@@ -713,5 +713,7 @@ function fjm_clamor_modify_performances_form_submit(&$form, &$form_state) {
       }
     }
   }
-  $form_state['storage']['performances'] = $movements;
+  unset($form_state['storage']);
+  //$form_state['storage']['performances'] = $movements;
+  $form_state['redirect'] = "fedora/repository/{$form_state['values']['concert_pid']}";
 }
