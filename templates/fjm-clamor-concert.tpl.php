@@ -83,6 +83,6 @@ if ($pagenumber != NULL && $pagenumber > 0) :
   });
 });
 ENDJS
-, 'inline');
+, 'inline', 'footer');
 endif;?>
 </div>
