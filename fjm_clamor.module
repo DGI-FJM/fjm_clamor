@@ -943,6 +943,7 @@ EOQ
         //  (array)$doc->atm_performance_movement_name_ms,
         //  (array)$doc->atm_performance_movement_mp3_ms
         //),
+        'players' => array(),
     ) + $performance;
 
     $m_res = ObjectHelper::performSparqlQuery(<<<EOQ
@@ -966,12 +967,24 @@ EOQ
         'hasMP3' => !empty($movement['mp3']) ? 'true' : 'false',
       ) + $movement;
     }
+
+    $p_res = ObjectHelper::performSparqlQuery(<<<EOQ
+PREFIX atm-rel: <http://digital.march.es/atmusica#>
+SELECT DISTINCT ?performer ?name ?instrument
+FROM <#ri>
+WHERE {
+  ?performer atm-rel:performance <info:fedora/{$performance['pid']}> ;
+             atm-rel:player ?person ;
+             atm-rel:instrument ?inst .
+  ?person <dc:title> ?name .
+  ?inst <dc:title> ?instrument .
+}
+EOQ
+);
     
-    $players = (array)$doc->atm_performance_player_ms;
-    $instrument = (array)$doc->atm_performance_inst_ms;
     //FIXME:  There might/could be trouble here if a person plays more than one instrument.
-    foreach ($players as $idx => $player) {
-      $performance['players'][$player][] = $instrument[$idx];
+    foreach ($p_res as $performer) {
+      $performance['players'][$performer['name']][] = $performer['instrument'];
     }
     
     $performance['rows'] = array(
